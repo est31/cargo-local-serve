@@ -1,6 +1,6 @@
-# Cargo local serve
+<img src="site/static/package-logo.svg" width="128">
 
-![Logo](site/static/package-logo.svg)
+# Cargo local serve
 
 Serve a local, offline, clone of `crates.io`.
 
