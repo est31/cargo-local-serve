@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<link rel="stylesheet" href="/static/style.css">
+
+		{{> head-block}}
+</head>
+<body>
+<div id="view">
+	<div id="header" class="header">
+		<img src="/static/package-logo.svg" id="logo" width="100" height="100">
+		<h1>
+			Local cargo-serve
+			<span class="subtitle">Rust Package Registry</span>
+		</h1>
+		<form action="/search" class="search" data-ember-action="" data-ember-action-331="331">
+			<input name="q" tabindex="1" required="" placeholder="Click or press 'S' to search..." autofocus="" id="search-input" class="search" type="text">
+		</form>
+		<div class="nav">
+			<a href="/browse">Browse Crates</a>
+			<span class="sep">|</span>
+			<a href="/docs">Docs</a>
+		</div>
+	</div>
+	<div class="content">
+		{{> @partial-block}}
+	</div>
+</div>
+</body>
+</html>

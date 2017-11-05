@@ -1,0 +1,166 @@
+html {
+	background:radial-gradient(rgba(255,255,255,.1) 10%, transparent 20%) 0 0px,
+	radial-gradient(rgba(255,255,255,.1) 10%, transparent 20%) 8px 8px;
+	background-size:16px 16px;
+	background-color:#3b6837;
+}
+
+body {
+	font-family: "Helvetica Neue",Helvetica,Helvetica,Arial,sans-serif;
+	font-size: 16px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+body, html {
+	margin: 0;
+}
+
+h1 {
+	font-size: 2em;
+	margin: .67em 0;
+}
+
+a {
+	text-decoration: none;
+	color: #00ac5b;
+}
+
+a:hover {
+	color: #007940;
+}
+
+#view {
+	width: 960px;
+	color: #383838;
+}
+
+#crates-heading {
+	background-color: #edebdd;
+	padding: 20px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	margin-bottom: 20px;
+}
+
+#crates-heading h2 {
+	color: #858585;
+	padding-left: 10px;
+}
+
+.header {
+	color: #fff;
+	align-items: center;
+	height: 100px;
+	display: flex;
+}
+
+.header a:hover {
+	color: #d9d9d9;
+}
+
+.header a {
+	color: #fff;
+}
+
+.subtitle {
+	display: block;
+	font-size: x-small;
+}
+
+#header form.search {
+	display: flex;
+	flex-grow: 1;
+}
+
+#header input.search {
+	width: 100%;
+
+	font-size: 90%;
+	padding: 5px 5px 5px 25px;
+
+	color: #000;
+	background-color: #fff;
+
+	border: none;
+
+	margin-left: 16px;
+	margin-right: 16px;
+}
+
+#header .sep {
+	margin: 0 10px;
+	color: #284725;
+}
+
+.content {
+	border: 5px solid #62865f;
+	background-color: #f9f7ec;
+	padding: 15px;
+}
+
+.install {
+	background-color: #dfdbc2;
+	padding: 10px;
+	font-size: 120%;
+	display: flex;
+	padding-right: 10px;
+}
+
+.install .action {
+	flex: 0;
+	align-self: center;
+	padding-right: 10px;
+}
+
+.install code {
+	color: #fff;
+	flex: 8;
+	background: #383838;
+	padding: 20px;
+
+}
+
+.copy-btn {
+	border: none;
+	width: 60px;
+	cursor: pointer;
+}
+
+.copy-btn:hover {
+	background: #edebdd;
+
+}
+
+.crate-info {
+	display: flex;
+	flex-direction: row;
+}
+
+.docs {
+	flex: 7;
+	padding-right: 40px;
+}
+
+.authorship {
+	flex: 3;
+	padding-left: 20px;
+	border-left: 2px solid #d5d3cb;
+}
+
+.date {
+	font-weight: 700;
+}
+
+span.small {
+	font-size: 80%;
+}
+.small a {
+	color: #858585;
+	text-decoration: underline;
+}
+.small a:hover {
+	color: #6b6b6b;
+}
