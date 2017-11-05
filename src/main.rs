@@ -11,6 +11,8 @@ extern crate mount;
 extern crate tar;
 extern crate toml;
 extern crate semver;
+#[macro_use]
+extern crate hyper;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -76,6 +78,18 @@ impl Handler for FallbackHandler {
 	}
 }
 
+header! { (ContentSecurityPolicy, "Content-Security-Policy") => [String] }
+
+fn csp_hdr(_ :&mut Request, mut res :Response) -> IronResult<Response> {
+	let csp_header =
+		"default-src 'self'; \
+		object-src 'none'; \
+		connect-src 'none'; \
+		script-src 'none'".to_owned();
+	res.headers.set(ContentSecurityPolicy(csp_header));
+	Ok(res)
+}
+
 fn krate(r: &mut Request) -> IronResult<Response> {
 	let path = r.url.path();
 	let name = path[0];
@@ -119,6 +133,7 @@ fn main() {
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
 	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);
+	chain.link_after(csp_hdr);
 	chain.link_after(GzMiddleware);
 	println!("Server running at http://localhost:3000/");
 	Iron::new(chain).http("localhost:3000").unwrap();
