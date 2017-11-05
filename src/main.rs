@@ -13,11 +13,11 @@ extern crate toml;
 extern crate semver;
 
 use iron::prelude::*;
-use iron::status::Status;
-use iron::{AfterMiddleware, status};
+use iron::{AfterMiddleware, Handler, status};
 use iron::headers::{ContentEncoding, Encoding};
 use hbs::{Template, HandlebarsEngine, DirectorySource};
 use hbs::handlebars::{Handlebars, RenderContext, RenderError, Helper};
+use serde_json::value::{Value, Map};
 
 use std::time::Duration;
 use std::path::Path;
@@ -50,6 +50,29 @@ impl AfterMiddleware for GzMiddleware {
 		}
 
 		Ok(resp)
+	}
+}
+
+struct FallbackHandler(Box<Handler>);
+
+impl Handler for FallbackHandler {
+	fn handle(&self, req: &mut Request) -> IronResult<Response> {
+		let resp = self.0.handle(req);
+
+		match resp {
+			Err(err) => {
+				match err.response.status {
+					Some(status) => {
+						let mut m = Map::new();
+						m.insert("error".to_string(), Value::from(format!("{}", status)));
+						Ok(Response::with((status,
+							Template::new("error", m))))
+					}
+					_ => Err(err),
+				}
+			}
+			other => other
+		}
 	}
 }
 
@@ -94,7 +117,7 @@ fn main() {
 	mount.mount("/crate", krate);
 	mount.mount("/static", Static::new(Path::new("./site/static"))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
-	let mut chain = Chain::new(mount);
+	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);
 	chain.link_after(GzMiddleware);
 	println!("Server running at http://localhost:3000/");
