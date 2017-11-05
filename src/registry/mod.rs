@@ -8,7 +8,7 @@ use semver::Version as SvVersion;
 
 pub mod registry;
 
-use self::registry::Registry;
+use self::registry::{Registry, DependencyKind};
 
 #[derive(Serialize, Debug)]
 pub struct Crate {
@@ -20,6 +20,7 @@ pub struct Crate {
 	versions :Vec<Version>,
 	versions_limited :Option<usize>,
 	dependencies :Vec<Dependency>,
+	dev_dependencies :Option<Vec<Dependency>>,
 }
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
@@ -67,7 +68,7 @@ pub struct Version {
 #[derive(Serialize, Debug)]
 pub struct Dependency {
 	name :String,
-	version :String,
+	req :String,
 }
 
 #[allow(dead_code)]
@@ -105,6 +106,7 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 		],
 		versions_limited : None,
 		dependencies : vec![],
+		dev_dependencies : None,
 	};
 	data.insert("c".to_string(), to_json(&krate));
 	data
@@ -182,9 +184,15 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 	} else {
 		(0, false)
 	};
+	let json_for_version = crate_json.iter()
+		.filter(|v| v.version == version).next().unwrap();
 
 	let info :CrateInfo = otry!(toml::from_slice(&cargo_toml_file));
 
+	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Dev)
+			.map(|d| Dependency { name : d.name.clone(), req : d.req.clone() })
+			.collect();
 	let krate = Crate {
 		name : name.clone(),
 		version : version.to_string(),
@@ -203,7 +211,15 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 		} else {
 			None
 		},
-		dependencies : vec![],
+		dependencies : json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Normal)
+			.map(|d| Dependency { name : d.name.clone(), req : d.req.clone() })
+			.collect(),
+		dev_dependencies : if dev_deps.len() > 0 {
+			Some(dev_deps)
+		} else {
+			None
+		},
 	};
 	data.insert("c".to_string(), to_json(&krate));
 	Some(data)

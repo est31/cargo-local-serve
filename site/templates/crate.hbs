@@ -59,9 +59,23 @@
 			<div>
 				<h3>Dependencies</h3>
 				<ul>
+				{{#each c.dependencies}}
+					<li><a href="/crate/{{name}}">{{name}} {{req}}</a></li>
+				{{else}}
 					<li>None</li>
+				{{/each}}
 				</ul>
 			</div>
+			{{#if c.dev_dependencies}}
+			<div>
+				<h3>Dev-Dependencies</h3>
+				<ul>
+				{{#each c.dev_dependencies}}
+					<li><a href="/crate/{{name}}">{{name}} {{req}}</a></li>
+				{{/each}}
+				</ul>
+			</div>
+			{{/if}}
 		</div>
 	</div>
 {{/frame}}
