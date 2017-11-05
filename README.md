@@ -19,7 +19,8 @@ less wasteful about resources than `crates.io`.
 The project is therefore guided by the following principles:
 
 1. Any site shoud load fast and be low on resources.
-	Any argument of the form "but nobody uses dialup any more" is not legitimate.
+	Any argument of the form "but nobody uses dialup any more" is not legitimate:
+	Instead of being an opportunity for developers to waste stuff, a fast connection should make sites load faster!
 2. While the site may feature Javascript based enhancements,
 	if a feature can be implemented without Javascript, it should be.
 	The site's main functionality should work even if no javascript
