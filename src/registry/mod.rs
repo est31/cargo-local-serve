@@ -214,7 +214,7 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 	let versions = crate_json.iter()
 		.map(|v| v.version.clone())
 		.collect::<Vec<_>>();
-	let (v_start, v_limited) = if versions.len() > 4 {
+	let (v_start, v_limited) = if versions.len() > 5 {
 		(versions.len() - 5, true)
 	} else {
 		(0, false)
