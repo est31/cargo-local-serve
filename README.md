@@ -17,10 +17,13 @@ Uses the crates you have cached locally to display a clone of `crates.io`.
 * Add site for when the given version is not mirrored
 * Implement  "crate/cratename/versions" page
 * Implement "browse crates" page
-* Render the markdown using pulldown-cmark
 * Source code formatting inside that rendering using syntect
 * Search feature
 * Upload feature
+
+## Done
+
+* Render the markdown using pulldown-cmark
 
 ## Design principles
 

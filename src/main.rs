@@ -13,6 +13,7 @@ extern crate toml;
 extern crate semver;
 #[macro_use]
 extern crate hyper;
+extern crate pulldown_cmark;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};

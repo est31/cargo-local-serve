@@ -142,6 +142,18 @@ a:hover {
 .docs {
 	flex: 7;
 	padding-right: 40px;
+	max-width: 640px;
+}
+
+.docs pre {
+	color: #fff;
+	border-radius: .5em;
+	border: .3em solid #545454;
+	box-shadow: 1px 1px .5em #000 inset;
+	background: #141414;
+	margin: .5em 0;
+	overflow: auto;
+	padding: 1em;
 }
 
 .authorship {

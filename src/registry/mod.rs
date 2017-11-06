@@ -2,9 +2,10 @@ use hbs::handlebars::to_json;
 use serde_json::value::{Value, Map};
 use flate2::FlateReadExt;
 use tar::Archive;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use toml;
 use semver::Version as SvVersion;
+use pulldown_cmark::{html, Parser};
 
 pub mod registry;
 
@@ -15,6 +16,7 @@ pub struct Crate {
 	name :String,
 	version :String,
 	description :String,
+	readme_html :Option<String>,
 	authors :Vec<Author>,
 	license :String,
 	versions :Vec<Version>,
@@ -79,6 +81,7 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 		name : "winapi".to_string(),
 		version : "0.2.8".to_string(),
 		description : "Types and constants for WinAPI bindings. See README for list of crates providing function bindings.".to_string(),
+		readme_html : None,
 		authors : vec![
 			Author {
 				name : "Peter Atashian".to_string(),
@@ -127,11 +130,37 @@ struct CratePackage {
 	description :String,
 	license :String,
 	authors :Vec<String>,
+	readme :Option<String>,
 }
 
 #[derive(Deserialize)]
 struct CrateInfo {
 	package :CratePackage,
+}
+
+fn extract_path_from_gz<T :Read>(r :T,
+		path_ex :&str) -> Option<Vec<u8>> {
+	let decoded = if let Some(d) = r.gz_decode().ok() {
+		d
+	} else {
+		return None
+	};
+	let mut archive = Archive::new(decoded);
+	for entry in otry!(archive.entries()) {
+		let mut entry = otry!(entry);
+		let is_path_ex = if let Some(path) = otry!(entry.path()).to_str() {
+			path_ex == path
+		} else {
+			false
+		};
+		if is_path_ex {
+			// Extract the file
+			let mut v = Vec::new();
+			otry!(entry.read_to_end(&mut v));
+			return Some(v);
+		}
+	}
+	return None;
 }
 
 pub fn get_crate_data(name :String, version :Option<&str>)
@@ -149,32 +178,38 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 		// -- then the crate is not present!!!
 		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
 	};
-	let f = match r.get_crate_file(&name, &version).ok() {
+	let mut f = match r.get_crate_file(&name, &version).ok() {
 		Some(f) => f,
 		None => panic!("Version {} of crate {} not mirrored", version, name),
 	};
-	let decoded = otry!(f.gz_decode());
-	let mut archive = Archive::new(decoded);
-	let cargo_toml_path = format!("{}-{}/Cargo.toml", name, version);
-	let mut cargo_toml_extracted = None;
-	for entry in otry!(archive.entries()) {
-		let mut entry = otry!(entry);
-		let is_cargo_toml = if let Some(path) = otry!(entry.path()).to_str() {
-			cargo_toml_path == path
-		} else {
-			false
-		};
-		if is_cargo_toml {
-			// Extract the Cargo.toml
-			let mut v = Vec::new();
-			otry!(entry.read_to_end(&mut v));
-			cargo_toml_extracted = Some(v);
-		}
-	}
+	let cargo_toml_extracted = extract_path_from_gz(&f,
+		&format!("{}-{}/Cargo.toml", name, version));
+	f.seek(SeekFrom::Start(0)).unwrap();
+
 	let cargo_toml_file = if let Some(toml_file) = cargo_toml_extracted {
 		toml_file
 	} else {
 		return None;
+	};
+
+	let info :CrateInfo = otry!(toml::from_slice(&cargo_toml_file));
+
+	let readme_html = if let Some(filename) = info.package.readme {
+		if let Some(c) = extract_path_from_gz(&f,
+				&format!("{}-{}/{}", name, version, filename)) {
+			if let Ok(s) = String::from_utf8(c) {
+				let p = Parser::new(&s);
+				let mut r = String::new();
+				html::push_html(&mut r, p);
+				Some(r)
+			} else {
+				None
+			}
+		} else {
+			None
+		}
+	} else {
+		None
 	};
 	let versions = crate_json.iter()
 		.map(|v| v.version.clone())
@@ -187,16 +222,16 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 	let json_for_version = crate_json.iter()
 		.filter(|v| v.version == version).next().unwrap();
 
-	let info :CrateInfo = otry!(toml::from_slice(&cargo_toml_file));
-
 	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
 			.filter(|d| d.kind == DependencyKind::Dev)
 			.map(|d| Dependency { name : d.name.clone(), req : d.req.clone() })
 			.collect();
+
 	let krate = Crate {
 		name : name.clone(),
 		version : version.to_string(),
 		description : info.package.description,
+		readme_html : readme_html,
 		authors : info.package.authors.iter()
 			.map(|s| Author::from_str(&s)).collect(),
 		license : info.package.license,
