@@ -9,7 +9,9 @@ or are only prototyped.
 
 Uses the crates you have cached locally to display a clone of the `crates.io` interface to users.
 
-A second (and later) goal of this project is to extend with writeability, aka enabling a local crates.io like service for companies, mars colonists, etc where you can push your crates to similar to how `crates.io` is working. Just with less setup and focused on that local clone task! The `crates.io` team has publicly stated that the only goal of the codebase is to drive the site itself and no local clones of it. That's where this project comes in :).
+A second (and later) goal of this project is to extend with writeability, aka enabling a local crates.io like service for companies, mars colonists, etc where you can push your crates to, similar to how `crates.io` is working.
+
+The `crates.io` team has publicly stated that the only goal of the codebase is to drive the site itself and no local clones of it. That's where this project comes in : it is tailored for that use case precisely. Aka, less setup but also only a subset of the features.
 
 Some little demo for usage:
 
@@ -36,11 +38,9 @@ Some little demo for usage:
 ## Design principles
 
 The visual design has been heavily lended from the design
-of the main `crates.io` website.
+of the main `crates.io` website. It is a very beautiful design and well known to the Rust developer community.
 
-One of the design goals is however to be much leaner and
-less wasteful about resources than `crates.io`.
-The project is therefore guided by the following principles:
+The project is guided by the following principles:
 
 1. Any site shoud load fast and be low on resources.
 	Any argument of the form "but nobody uses dialup any more" is not legitimate:
@@ -77,11 +77,11 @@ Ember is being used by many quite renown companies. If it were bad, they wouldn'
 
 I'm not the maintainer of `crates.io` so I don't want to tell them what to do. But for my project, I have chosen to not adopt ember or any other [single page applications](https://en.wikipedia.org/wiki/Single-page_application) (SPA) based approach.
 
-The basic idea of designing web sites as single page applications (SPAs) is to *save* on bandwidth by just transporting a *small* json file over the wire. However, for crates I've tested, the json file that ember-powered `crates.io` sends over the network is *larger* than the entire HTML that my frontend sends over the wire. `crates.io` loads really slowly and there is also an unneccessary overhead in bandwidth. I don't think that this is what ember is capable of doing! The second thing that SPA is about is having dynamic pages with content that changes over time either from itself (watching a live chat) or through interaction with the user (participating in a live chat). Now `crates.io` is a mostly static site, so we'd get little gain here as well.
+The basic idea of designing web sites as single page applications (SPAs) is to *save* on bandwidth by just transporting a *small* json file over the wire. However, for crates I've tested, the json file that ember-powered `crates.io` sends over the network is *larger* than the entire HTML that my frontend sends over the wire. The second thing that SPA is about is having dynamic pages with content that changes over time either from itself (watching a live chat) or through interaction with the user (participating in a live chat). Now this project is about a mostly static site, so we'd get little gain here as well.
 
 The third reason is a more security oriented one: if your entire interface with the application state is via json, it can be reasoned about by security tools in a much easier fashion. Also, any exploit in the rendering code would not allow you to escalate to a breach.
 
-The first point is covered here by using handlebars: as handlebars uses json, there is already a json based interface, it is just inside the server! The second point is being approached by using memory-safe Rust everywhere. This obviously doesn't help with exploitable libraries, however they should mostly consist of safe Rust as well.
+The first point is covered here by using handlebars: as handlebars uses json, there is already a json based interface. It is just inside the server! The second point is being approached by using memory-safe Rust everywhere. This obviously doesn't help with exploitable libraries, however they should mostly consist of safe Rust as well.
 
 `crates.io` would probably see huge improvements in performance by using [ember-fastboot](https://ember-fastboot.com/). However, this project targets to be even leaner than that.
 
