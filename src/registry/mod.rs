@@ -71,6 +71,7 @@ pub struct Version {
 pub struct Dependency {
 	name :String,
 	req :String,
+	optional :bool,
 }
 
 #[allow(dead_code)]
@@ -224,7 +225,7 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 
 	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
 			.filter(|d| d.kind == DependencyKind::Dev)
-			.map(|d| Dependency { name : d.name.clone(), req : d.req.clone() })
+			.map(|d| d.to_crate_dep())
 			.collect();
 
 	let krate = Crate {
@@ -248,7 +249,7 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 		},
 		dependencies : json_for_version.dependencies.iter()
 			.filter(|d| d.kind == DependencyKind::Normal)
-			.map(|d| Dependency { name : d.name.clone(), req : d.req.clone() })
+			.map(|d| d.to_crate_dep())
 			.collect(),
 		dev_dependencies : if dev_deps.len() > 0 {
 			Some(dev_deps)

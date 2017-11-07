@@ -6,6 +6,8 @@ use serde_json::from_str;
 
 use semver::Version;
 
+use super::Dependency;
+
 #[derive(Deserialize, PartialEq, Eq, Hash, Debug)]
 pub enum DependencyKind {
 	#[serde(rename = "normal")]
@@ -20,7 +22,18 @@ pub enum DependencyKind {
 pub struct CrateDepJson {
 	pub name :String,
 	pub req :String,
+	pub optional :bool,
 	pub kind :DependencyKind,
+}
+
+impl CrateDepJson {
+	pub fn to_crate_dep(&self) -> Dependency {
+		Dependency {
+			name : self.name.clone(),
+			req : self.req.clone(),
+			optional : self.optional,
+		}
+	}
 }
 
 #[derive(Deserialize)]

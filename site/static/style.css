@@ -187,3 +187,7 @@ span.small {
 	padding: 10px;
 	border-radius: 5px;
 }
+
+.optional {
+	font-size: 80%;
+}

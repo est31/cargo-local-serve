@@ -62,7 +62,11 @@
 				<h3>Dependencies</h3>
 				<ul>
 				{{#each c.dependencies}}
-					<li><a href="/crate/{{name}}">{{name}} {{req}}</a></li>
+					<li><a href="/crate/{{name}}">{{name}} {{req}}</a>
+					{{#if optional}}
+						<span class="optional">optional</span>
+					{{/if}}
+					</li>
 				{{else}}
 					<li>None</li>
 				{{/each}}
