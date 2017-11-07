@@ -153,8 +153,7 @@ a:hover {
 	color: #fff;
 	border-radius: .5em;
 	border: .3em solid #545454;
-	box-shadow: 1px 1px .5em #000 inset;
-	background: #141414;
+	background: #2b303b;
 	margin: .5em 0;
 	overflow: auto;
 	padding: 1em;

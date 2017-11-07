@@ -15,6 +15,7 @@ extern crate semver;
 extern crate hyper;
 extern crate pulldown_cmark;
 extern crate ammonia;
+extern crate syntect;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -34,6 +35,7 @@ use staticfile::Static;
 use mount::Mount;
 
 mod registry;
+mod markdown_render;
 
 pub struct GzMiddleware;
 
@@ -90,9 +92,12 @@ fn csp_hdr(req :&mut Request, mut res :Response) -> IronResult<Response> {
 		script-src 'none'".to_owned();
 	let path = req.url.path();
 	if let Some(z) = path.get(0) {
-		if z == &"static" {
+		// TODO find a way to avoid inline css in the syntect formatter
+		// and then remove || z == &"crate".
+		// https://github.com/trishume/syntect/issues/121
+		if z == &"static" || z == &"crate" {
 			// Needed for inline CSS inside SVG
-			csp_header += "; style-src 'unsafe-inline'";
+			csp_header += "; style-src 'self' 'unsafe-inline'";
 		}
 	}
 	res.headers.set(ContentSecurityPolicy(csp_header));
