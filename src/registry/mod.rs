@@ -6,6 +6,7 @@ use std::io::{Read, Seek, SeekFrom};
 use toml;
 use semver::Version as SvVersion;
 use pulldown_cmark::{html, Parser};
+use ammonia::clean;
 
 pub mod registry;
 
@@ -200,9 +201,10 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 				&format!("{}-{}/{}", name, version, filename)) {
 			if let Ok(s) = String::from_utf8(c) {
 				let p = Parser::new(&s);
-				let mut r = String::new();
-				html::push_html(&mut r, p);
-				Some(r)
+				let mut unsafe_html = String::new();
+				html::push_html(&mut unsafe_html, p);
+				let safe_html = clean(&unsafe_html);
+				Some(safe_html)
 			} else {
 				None
 			}

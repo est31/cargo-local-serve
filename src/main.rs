@@ -14,6 +14,7 @@ extern crate semver;
 #[macro_use]
 extern crate hyper;
 extern crate pulldown_cmark;
+extern crate ammonia;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
