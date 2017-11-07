@@ -73,8 +73,17 @@ I definitely encourage `crates.io` maintainers to take a look at my codebase and
 
 ### Do you think Ember is bad? If no, why didn't you use it then?
 
-Ember is being used by many quite renown companies. If it were bad, they wouldn't be using it.
-That being said, the way `crates.io` uses ember makes both `crates.io` and ember look really bad! The basic idea of responsive design is to *save* on bandwidth by just transporting a *small* json file over the wire. However, for crates I've tested, the json file that ember-powered `crates.io` sends over the network is *larger* than the entire HTML that my frontend sends over the wire. `crates.io` loads really slowly and there is a huge overhead in bandwidth. I don't think that this is what ember is capable of doing nor do I think that this is what the future of the web should look like! The second thing that responsive design bases on is having dynamic pages with highly dynamic content. Now is `crates.io` dynamic? No, it is a mostly static site. So there is little gain in adopting responsive design here as well.
+Ember is being used by many quite renown companies. If it were bad, they wouldn't be using it. In fact, this project itself is using the `handlebars` technology that has a deep relationship to ember.
+
+I'm not the maintainer of `crates.io` so I don't want to tell them what to do. But for my project, I have chosen to not adopt ember or any other [single page applications](https://en.wikipedia.org/wiki/Single-page_application) (SPA) based approach.
+
+The basic idea of designing web sites as single page applications (SPAs) is to *save* on bandwidth by just transporting a *small* json file over the wire. However, for crates I've tested, the json file that ember-powered `crates.io` sends over the network is *larger* than the entire HTML that my frontend sends over the wire. `crates.io` loads really slowly and there is also an unneccessary overhead in bandwidth. I don't think that this is what ember is capable of doing! The second thing that SPA is about is having dynamic pages with content that changes over time either from itself (watching a live chat) or through interaction with the user (participating in a live chat). Now `crates.io` is a mostly static site, so we'd get little gain here as well.
+
+The third reason is a more security oriented one: if your entire interface with the application state is via json, it can be reasoned about by security tools in a much easier fashion. Also, any exploit in the rendering code would not allow you to escalate to a breach.
+
+The first point is covered here by using handlebars: as handlebars uses json, there is already a json based interface, it is just inside the server! The second point is being approached by using memory-safe Rust everywhere. This obviously doesn't help with exploitable libraries, however they should mostly consist of safe Rust as well.
+
+`crates.io` would probably see huge improvements in performance by using [ember-fastboot](https://ember-fastboot.com/). However, this project targets to be even leaner than that.
 
 ## Logo credit
 
