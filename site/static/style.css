@@ -145,11 +145,14 @@ a:hover {
 	max-width: 640px;
 }
 
+.docs pre, .docs code {
+	font-family: Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;
+}
+
 .docs pre {
 	color: #fff;
 	border-radius: .5em;
 	border: .3em solid #545454;
-	font-family: Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;
 	box-shadow: 1px 1px .5em #000 inset;
 	background: #141414;
 	margin: .5em 0;
