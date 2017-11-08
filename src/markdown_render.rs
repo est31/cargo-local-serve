@@ -2,7 +2,7 @@ use pulldown_cmark::{html, Parser, Event, Tag};
 use ammonia::clean;
 use syntect::html::highlighted_snippet_for_string;
 use syntect::parsing::SyntaxSet;
-use syntect::highlighting::{Color, ThemeSet};
+use syntect::highlighting::ThemeSet;
 use std::borrow::Cow;
 
 struct EventIter<'a> {
