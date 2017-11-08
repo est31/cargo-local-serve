@@ -268,3 +268,35 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 	data.insert("c".to_string(), to_json(&krate));
 	Some(data)
 }
+
+#[derive(Serialize, Debug)]
+struct Versions {
+	name :String,
+	refferer :Option<String>,
+	versions_length :usize,
+	versions :Vec<Version>,
+}
+
+pub fn get_versions_data(name :&str, refferer :Option<String>)
+		-> Map<String, Value> {
+	let mut data = Map::new();
+
+	let r = Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
+	let crate_json = r.get_crate_json(&name).unwrap();
+
+	let version_list = crate_json.iter()
+		.map(|jl| Version {
+			v : format!("{}", jl.version),
+			date : None,
+		})
+		.collect::<Vec<Version>>();
+
+	let versions = Versions {
+		name : name.to_string(),
+		refferer,
+		versions_length : version_list.len(),
+		versions : version_list,
+	};
+	data.insert("c".to_string(), to_json(&versions));
+	data
+}

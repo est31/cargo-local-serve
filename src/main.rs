@@ -26,6 +26,8 @@ use hbs::{Template, HandlebarsEngine, DirectorySource};
 use hbs::handlebars::{Handlebars, RenderContext, RenderError, Helper};
 use serde_json::value::{Value, Map};
 
+use iron::headers::Referer;
+
 use std::time::Duration;
 use std::path::Path;
 
@@ -121,6 +123,20 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+fn versions(r: &mut Request) -> IronResult<Response> {
+	let path = r.url.path();
+	let name = path[0];
+	let mut resp = Response::new();
+
+	let refferer = r.headers.get::<Referer>()
+		.map(|s| s.as_str().to_string());
+
+	let crate_data = registry::get_versions_data(name, refferer);
+	resp.set_mut(Template::new("versions", crate_data))
+		.set_mut(status::Ok);
+	Ok(resp)
+}
+
 fn main() {
 	env_logger::init().unwrap();
 
@@ -144,6 +160,7 @@ fn main() {
 	);
 
 	let mut mount = Mount::new();
+	mount.mount("/versions", versions);
 	mount.mount("/crate", krate);
 	mount.mount("/static", Static::new(Path::new("./site/static"))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
