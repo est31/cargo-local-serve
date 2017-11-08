@@ -15,6 +15,9 @@ use super::markdown_render::render_markdown;
 pub struct Crate {
 	name :String,
 	version :String,
+	homepage :Option<String>,
+	documentation :String,
+	repository :Option<String>,
 	description :String,
 	readme_html :Option<String>,
 	authors :Vec<Author>,
@@ -81,6 +84,9 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 	let krate = Crate {
 		name : "winapi".to_string(),
 		version : "0.2.8".to_string(),
+		homepage : None,
+		documentation : "https://docs.rs/winapi".to_string(),
+		repository : Some("https://github.com/retep998/winapi-rs".to_string()),
 		description : "Types and constants for WinAPI bindings. See README for list of crates providing function bindings.".to_string(),
 		readme_html : None,
 		authors : vec![
@@ -128,6 +134,8 @@ macro_rules! otry {
 
 #[derive(Deserialize)]
 struct CratePackage {
+	repository :Option<String>,
+	homepage :Option<String>,
 	description :String,
 	license :String,
 	authors :Vec<String>,
@@ -228,6 +236,9 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 	let krate = Crate {
 		name : name.clone(),
 		version : version.to_string(),
+		homepage : info.package.homepage,
+		documentation : format!("https://docs.rs/{}/{}", name.clone(), version.to_string()),
+		repository : info.package.repository,
 		description : info.package.description,
 		readme_html : readme_html,
 		authors : info.package.authors.iter()
