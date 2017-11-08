@@ -1,4 +1,5 @@
 use pulldown_cmark::{html, Parser, Event, Tag};
+#[allow(unused_imports)]
 use ammonia::clean;
 use syntect::html::highlighted_snippet_for_string;
 use syntect::parsing::SyntaxSet;
@@ -15,6 +16,10 @@ impl<'a> EventIter<'a> {
 			p,
 		}
 	}
+}
+
+lazy_static! {
+	static ref THEME_SET :ThemeSet = ThemeSet::load_defaults();
 }
 
 impl<'a> Iterator for EventIter<'a> {
@@ -41,22 +46,22 @@ impl<'a> Iterator for EventIter<'a> {
 			match &next {
 				&Some(Event::End(Tag::CodeBlock(ref token))) => {
 
-					// TODO cache these three:
-					let syns = SyntaxSet::load_defaults_nonewlines();
-					let thes = ThemeSet::load_defaults();
-					let theme = &thes.themes["base16-ocean.dark"];
+					thread_local!(static SYN_SET :SyntaxSet = SyntaxSet::load_defaults_newlines());
 
+					let theme = &THEME_SET.themes["base16-ocean.dark"];
 
-					if let Some(syntax) = syns.find_syntax_by_token(token) {
-						// TODO find a way to avoid inline css in the syntect formatter
-						let formatted = highlighted_snippet_for_string(&text_buf,
-							&syntax, theme);
-						return Some(Event::Html(Cow::Owned(formatted)));
-					} else {
-						let code_block = format!("<pre><code>{}</code></pre>",
-							text_buf);
-						return Some(Event::Html(Cow::Owned(code_block)));
-					}
+					return SYN_SET.with(|s| {
+						if let Some(syntax) = s.find_syntax_by_token(token) {
+							// TODO find a way to avoid inline css in the syntect formatter
+							let formatted = highlighted_snippet_for_string(&text_buf,
+								&syntax, theme);
+							return Some(Event::Html(Cow::Owned(formatted)));
+						} else {
+							let code_block = format!("<pre><code>{}</code></pre>",
+								text_buf);
+							return Some(Event::Html(Cow::Owned(code_block)));
+						}
+					});
 				},
 				_ => panic!("Unexpected element inside codeblock mode {:?}", next),
 			}

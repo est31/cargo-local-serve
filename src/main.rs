@@ -16,6 +16,8 @@ extern crate hyper;
 extern crate pulldown_cmark;
 extern crate ammonia;
 extern crate syntect;
+#[macro_use]
+extern crate lazy_static;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};

@@ -21,3 +21,4 @@ hyper = "0.10"
 pulldown-cmark = { version = "0.0.11", default-features = false }
 ammonia = "0.7.0"
 syntect = "1.8"
+lazy_static = "0.2"
