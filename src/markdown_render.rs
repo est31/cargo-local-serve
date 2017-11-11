@@ -1,10 +1,10 @@
 use pulldown_cmark::{html, Parser, Event, Tag};
 #[allow(unused_imports)]
 use ammonia::clean;
-use syntect::html::highlighted_snippet_for_string;
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::ThemeSet;
 use std::borrow::Cow;
+use code_format::highlight_string_snippet;
 
 struct EventIter<'a> {
 	p :Parser<'a>,
@@ -53,7 +53,7 @@ impl<'a> Iterator for EventIter<'a> {
 					return SYN_SET.with(|s| {
 						if let Some(syntax) = s.find_syntax_by_token(token) {
 							// TODO find a way to avoid inline css in the syntect formatter
-							let formatted = highlighted_snippet_for_string(&text_buf,
+							let formatted = highlight_string_snippet(&text_buf,
 								&syntax, theme);
 							return Some(Event::Html(Cow::Owned(formatted)));
 						} else {

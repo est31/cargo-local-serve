@@ -40,6 +40,8 @@ use mount::Mount;
 
 mod registry;
 mod markdown_render;
+mod escape;
+mod code_format;
 
 pub struct GzMiddleware;
 
