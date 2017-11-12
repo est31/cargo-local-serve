@@ -103,19 +103,28 @@ header! { (ContentSecurityPolicy, "Content-Security-Policy") => [String] }
 
 fn csp_hdr(req :&mut Request, mut res :Response) -> IronResult<Response> {
 	let mut csp_header =
-		"default-src 'self'; \
-		object-src 'none'; \
-		connect-src 'none'; \
-		script-src 'none'".to_owned();
+		"default-src 'none'; \
+		img-src 'self'; \
+		form-action 'self'; ".to_owned();
+
 	let path = req.url.path();
-	if let Some(z) = path.get(0) {
+	let allow_inline_style = if let Some(z) = path.get(0) {
 		// TODO find a way to avoid inline css in the syntect formatter
 		// and then remove || z == &"crate".
 		// https://github.com/trishume/syntect/issues/121
 		if z == &"static" || z == &"crate" {
 			// Needed for inline CSS inside SVG
-			csp_header += "; style-src 'self' 'unsafe-inline'";
+			true
+		} else {
+			false
 		}
+	} else {
+		false
+	};
+	if allow_inline_style {
+		csp_header += "style-src 'self' 'unsafe-inline';";
+	} else {
+		csp_header += "style-src 'self';";
 	}
 	res.headers.set(ContentSecurityPolicy(csp_header));
 	Ok(res)
