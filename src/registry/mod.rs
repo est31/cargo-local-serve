@@ -317,8 +317,9 @@ struct RevDependencies {
 	rev_d :Vec<RevDep>,
 }
 
-pub fn get_reverse_dependencies(name :&str, stats :&CrateStats, refferer :Option<String>)
-		-> Map<String, Value> {
+pub fn get_reverse_dependencies(name :&str,
+		only_latest_versions :bool,
+		stats :&CrateStats, refferer :Option<String>) -> Map<String, Value> {
 	let mut data = Map::new();
 
 	// TODO don't use unwrap, and use "checked" getting below.
@@ -327,6 +328,11 @@ pub fn get_reverse_dependencies(name :&str, stats :&CrateStats, refferer :Option
 	let mut rev_d_list = Vec::new();
 	for (vreq, dlist) in stats.reverse_dependencies[&name_i].iter() {
 		for &(rev_d_name, ref rev_d_version) in dlist.iter() {
+			if only_latest_versions &&
+					rev_d_version != &stats.latest_crate_versions[&rev_d_name] {
+				// Ignore any non-latest version
+				continue;
+			}
 			rev_d_list.push(RevDep {
 				name : stats.crate_names_interner.resolve(rev_d_name)
 					.unwrap().to_string(),

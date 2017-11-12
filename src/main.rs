@@ -167,7 +167,10 @@ fn reverse_dependencies(r: &mut Request) -> IronResult<Response> {
 	let refferer = r.headers.get::<Referer>()
 		.map(|s| s.as_str().to_string());
 
-	let crate_data = registry::get_reverse_dependencies(name, &CRATE_STATS, refferer);
+	let only_latest_versions = false;
+
+	let crate_data = registry::get_reverse_dependencies(name,
+		only_latest_versions, &CRATE_STATS, refferer);
 	resp.set_mut(Template::new("reverse_dependencies", crate_data))
 		.set_mut(status::Ok);
 	Ok(resp)
