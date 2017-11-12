@@ -18,6 +18,7 @@ extern crate ammonia;
 extern crate syntect;
 #[macro_use]
 extern crate lazy_static;
+extern crate string_interner;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -37,6 +38,9 @@ use flate2::write::GzEncoder;
 use staticfile::Static;
 
 use mount::Mount;
+
+use registry::registry::Registry;
+use registry::statistics::{compute_crate_statistics, CrateStats};
 
 mod registry;
 mod markdown_render;
@@ -88,6 +92,13 @@ impl Handler for FallbackHandler {
 	}
 }
 
+lazy_static! {
+	static ref REGISTRY :Registry =
+		Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
+	static ref CRATE_STATS :CrateStats =
+		compute_crate_statistics(&REGISTRY.get_all_crates_json().unwrap());
+}
+
 header! { (ContentSecurityPolicy, "Content-Security-Policy") => [String] }
 
 fn csp_hdr(req :&mut Request, mut res :Response) -> IronResult<Response> {
@@ -115,7 +126,7 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	let name = path[0];
 	let opt_version = path.get(1).map(|v| *v);
 	let mut resp = Response::new();
-	let crate_data = registry::get_crate_data(name.to_string(), opt_version);
+	let crate_data = registry::get_crate_data(name.to_string(), &REGISTRY, opt_version);
 	if let Some(data) = crate_data {
 		resp.set_mut(Template::new("crate", data))
 			.set_mut(status::Ok);
@@ -133,8 +144,22 @@ fn versions(r: &mut Request) -> IronResult<Response> {
 	let refferer = r.headers.get::<Referer>()
 		.map(|s| s.as_str().to_string());
 
-	let crate_data = registry::get_versions_data(name, refferer);
+	let crate_data = registry::get_versions_data(name, &REGISTRY, refferer);
 	resp.set_mut(Template::new("versions", crate_data))
+		.set_mut(status::Ok);
+	Ok(resp)
+}
+
+fn reverse_dependencies(r: &mut Request) -> IronResult<Response> {
+	let path = r.url.path();
+	let name = path[0];
+	let mut resp = Response::new();
+
+	let refferer = r.headers.get::<Referer>()
+		.map(|s| s.as_str().to_string());
+
+	let crate_data = registry::get_reverse_dependencies(name, &CRATE_STATS, refferer);
+	resp.set_mut(Template::new("reverse_dependencies", crate_data))
 		.set_mut(status::Ok);
 	Ok(resp)
 }
@@ -162,6 +187,7 @@ fn main() {
 	);
 
 	let mut mount = Mount::new();
+	mount.mount("/reverse_dependencies", reverse_dependencies);
 	mount.mount("/versions", versions);
 	mount.mount("/crate", krate);
 	mount.mount("/static", Static::new(Path::new("./site/static"))

@@ -16,9 +16,10 @@ staticfile = { version = "0.4", features = ["cache"] }
 mount = "0.3"
 tar = "0.4"
 toml = "0.4.5"
-semver = { version = "0.7", features = ["serde"] }
+semver = { version = "0.9", features = ["serde"] }
 hyper = "0.10"
 pulldown-cmark = { version = "0.0.11", default-features = false }
 ammonia = "0.7.0"
 syntect = "1.8"
 lazy_static = "0.2"
+string-interner = "0.6.3"

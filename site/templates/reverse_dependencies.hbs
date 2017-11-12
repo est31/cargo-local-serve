@@ -1,0 +1,14 @@
+{{#*inline "head-block" }}
+		<title>{{c.name}} - cargo-local-serve: packages for Rust</title>
+{{/inline}}
+{{#> frame}}
+	{{#if c.refferer}}
+	<div><a href="{{c.refferer}}">⬅ Back to Main Page</a></div>
+	{{/if}}
+	<span>All <b>{{c.rev_d_len}}</b> reverse dependencies of <b>{{c.name}}</b> </span>
+	<ul class="white-rows">
+	{{#each c.rev_d}}
+	<li><a href="/crate/{{name}}/{{version}}">{{name}}</a> version {{version}} needs {{req}}</li>
+	{{/each}}
+	</div>
+{{/frame}}

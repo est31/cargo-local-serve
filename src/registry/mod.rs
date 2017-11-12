@@ -5,10 +5,13 @@ use tar::Archive;
 use std::io::{Read, Seek, SeekFrom};
 use toml;
 use semver::Version as SvVersion;
+use semver::VersionReq;
 
 pub mod registry;
+pub mod statistics;
 
 use self::registry::{Registry, DependencyKind};
+use self::statistics::CrateStats;
 use super::markdown_render::render_markdown;
 
 #[derive(Serialize, Debug)]
@@ -172,13 +175,12 @@ fn extract_path_from_gz<T :Read>(r :T,
 	return None;
 }
 
-pub fn get_crate_data(name :String, version :Option<&str>)
+pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
 		-> Option<Map<String, Value>> {
 	let mut data = Map::new();
 
 	// First step: find the path to the crate.
-	let r = Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
-	let crate_json = r.get_crate_json(&name).unwrap();
+	let crate_json = reg.get_crate_json(&name).unwrap();
 	let version = if let Some(v) = version {
 		SvVersion::parse(v).unwrap()
 	} else {
@@ -187,7 +189,7 @@ pub fn get_crate_data(name :String, version :Option<&str>)
 		// -- then the crate is not present!!!
 		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
 	};
-	let mut f = match r.get_crate_file(&name, &version).ok() {
+	let mut f = match reg.get_crate_file(&name, &version).ok() {
 		Some(f) => f,
 		None => panic!("Version {} of crate {} not mirrored", version, name),
 	};
@@ -277,12 +279,11 @@ struct Versions {
 	versions :Vec<Version>,
 }
 
-pub fn get_versions_data(name :&str, refferer :Option<String>)
+pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
 		-> Map<String, Value> {
 	let mut data = Map::new();
 
-	let r = Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
-	let crate_json = r.get_crate_json(&name).unwrap();
+	let crate_json = reg.get_crate_json(&name).unwrap();
 
 	let version_list = crate_json.iter()
 		.map(|jl| Version {
@@ -298,5 +299,49 @@ pub fn get_versions_data(name :&str, refferer :Option<String>)
 		versions : version_list,
 	};
 	data.insert("c".to_string(), to_json(&versions));
+	data
+}
+
+#[derive(Serialize, Debug)]
+struct RevDep {
+	name :String,
+	req :VersionReq,
+	version :SvVersion,
+}
+
+#[derive(Serialize, Debug)]
+struct RevDependencies {
+	name :String,
+	refferer :Option<String>,
+	rev_d_len :usize,
+	rev_d :Vec<RevDep>,
+}
+
+pub fn get_reverse_dependencies(name :&str, stats :&CrateStats, refferer :Option<String>)
+		-> Map<String, Value> {
+	let mut data = Map::new();
+
+	// TODO don't use unwrap, and use "checked" getting below.
+	// Give an error instead in both cases!
+	let name_i = stats.crate_names_interner.get(name).unwrap();
+	let mut rev_d_list = Vec::new();
+	for (vreq, dlist) in stats.reverse_dependencies[&name_i].iter() {
+		for &(rev_d_name, ref rev_d_version) in dlist.iter() {
+			rev_d_list.push(RevDep {
+				name : stats.crate_names_interner.resolve(rev_d_name)
+					.unwrap().to_string(),
+				req : vreq.clone(),
+				version : rev_d_version.clone(),
+			});
+		}
+	}
+
+	let rev_deps = RevDependencies {
+		name : name.to_string(),
+		refferer,
+		rev_d_len : rev_d_list.len(),
+		rev_d : rev_d_list,
+	};
+	data.insert("c".to_string(), to_json(&rev_deps));
 	data
 }
