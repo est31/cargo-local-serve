@@ -22,6 +22,9 @@ pub enum DependencyKind {
 #[derive(Deserialize)]
 pub struct CrateDepJson {
 	pub name :String,
+	pub features :Vec<String>,
+	pub default_features :bool,
+	pub target :Option<String>,
 	pub req :VersionReq,
 	pub optional :bool,
 	pub kind :DependencyKind,
@@ -129,7 +132,12 @@ impl Registry {
 		let paths = try!(obtain_all_crates_paths(&self.index_path));
 		let mut r = Vec::with_capacity(paths.len());
 		for (crate_name, path) in paths {
+
 			let json = try!(path_to_index_json(&path));
+			/*let json = match path_to_index_json(&path) {
+				Ok(v) => v,
+				Err(_) => { println!("{:?}", &path); continue;},
+			};*/
 			r.push((crate_name, json));
 		}
 		Ok(r)
