@@ -1,13 +1,13 @@
 use super::registry::AllCratesJson;
 use string_interner::StringInterner;
 use semver::{Version, VersionReq};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type CrateName = usize;
 
 pub struct CrateStats {
 	pub crate_names_interner :StringInterner<CrateName>,
-	pub reverse_dependencies :HashMap<CrateName, HashMap<VersionReq, Vec<(CrateName, Version)>>>,
+	pub reverse_dependencies :HashMap<CrateName, HashMap<VersionReq, HashSet<(CrateName, Version)>>>,
 	/// The list of crates ordered by the number of crates directly depending on them.
 	pub most_directly_depended_on :Vec<(CrateName, usize)>,
 }
@@ -22,8 +22,8 @@ pub fn compute_crate_statistics(acj :&AllCratesJson) -> CrateStats {
 			for dep in krate.dependencies.iter() {
 				let dname_i = names_interner.get_or_intern(dep.name.clone());
 				let e = revd.entry(dname_i).or_insert(HashMap::new());
-				let v = e.entry(dep.req.clone()).or_insert(Vec::new());
-				v.push((name_i, krate.version.clone()));
+				let s = e.entry(dep.req.clone()).or_insert(HashSet::new());
+				s.insert((name_i, krate.version.clone()));
 			}
 		}
 	}
