@@ -351,3 +351,40 @@ pub fn get_reverse_dependencies(name :&str,
 	data.insert("c".to_string(), to_json(&rev_deps));
 	data
 }
+
+pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
+
+	#[derive(Serialize, Debug)]
+	struct CrateWithRevDeps {
+		name :String,
+		count :usize,
+	}
+
+	#[derive(Serialize, Debug)]
+	struct Index {
+		transitive_rev_deps :Vec<CrateWithRevDeps>,
+		direct_rev_deps :Vec<CrateWithRevDeps>,
+	}
+
+	let mut data = Map::new();
+
+	let transitive_rev_deps = vec![]; // TODO populate
+
+	let ddon = &stats.most_directly_depended_on;
+	let mut direct_rev_deps = ddon[ddon.len().saturating_sub(10)..].iter()
+		.map(|&(name, count)| CrateWithRevDeps {
+			name : stats.crate_names_interner.resolve(name)
+				.unwrap().to_string(),
+			count,
+		})
+		.collect::<Vec<_>>();
+	direct_rev_deps.reverse();
+
+	let index = Index {
+		transitive_rev_deps,
+		direct_rev_deps,
+	};
+	data.insert("c".to_string(), to_json(&index));
+
+	data
+}

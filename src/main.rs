@@ -176,6 +176,15 @@ fn reverse_dependencies(r: &mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+fn index(_: &mut Request) -> IronResult<Response> {
+	let mut resp = Response::new();
+
+	let crate_data = registry::get_index_data(&CRATE_STATS);
+	resp.set_mut(Template::new("index", crate_data))
+		.set_mut(status::Ok);
+	Ok(resp)
+}
+
 fn main() {
 	env_logger::init().unwrap();
 
@@ -204,6 +213,7 @@ fn main() {
 	mount.mount("/crate", krate);
 	mount.mount("/static", Static::new(Path::new("./site/static"))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
+	mount.mount("/", index);
 	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);
 	chain.link_after(csp_hdr);

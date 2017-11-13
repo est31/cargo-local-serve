@@ -1,3 +1,7 @@
+* {
+	box-sizing: border-box;
+}
+
 html {
 	background:radial-gradient(rgba(255,255,255,.1) 10%, transparent 20%) 0 0px,
 	radial-gradient(rgba(255,255,255,.1) 10%, transparent 20%) 8px 8px;
@@ -218,4 +222,52 @@ span.small {
 
 .optional {
 	font-size: 80%;
+}
+
+.crate-lists {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: left;
+}
+
+.crate-lists ul {
+	list-style: none;
+	padding: 0;
+}
+
+.crate-lists div {
+	margin: 0;
+	padding: 0 15px;
+	width: 33.33%;
+}
+
+.crate-lists h2 {
+	font-size: 105%;
+}
+
+.crate-lists li {
+	margin: 8px 0;
+}
+
+.crate-lists li a:hover {
+	background-color: #e4e1cc;
+}
+
+.crate-lists li a {
+	width: 100%;
+	color: #525252;
+	background-color: #edebdd;
+	padding: 20px 10px;
+	font-size: 90%;
+	display: flex;
+}
+
+.title-header {
+	border-bottom: 5px solid #d5d3cb;
+	padding-bottom: 40px;
+	text-align: center;
+}
+
+.title-header h1 {
+	font-size: 50px;
 }

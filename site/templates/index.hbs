@@ -1,0 +1,35 @@
+{{#*inline "head-block" }}
+		<title>cargo-local-serve: packages for Rust</title>
+{{/inline}}
+{{#> frame}}
+	<div class="title-header">
+		<h1>Local crate registry</h1>
+	</div>
+	<div id="home-crates" class="crate-lists">
+		<div>
+			<h2>Most direct reverse deps</h2>
+			<ul>
+				{{#each c.direct_rev_deps}}
+				<li><a href="/crate/{{name}}">
+					{{name}}({{count}})
+				</a></li>
+				{{/each}}
+			</ul>
+		</div>
+		<div>
+			<h2>Most transitive reverse deps</h2>
+			<ul>
+				{{#each c.transitive_rev_deps}}
+				<li><a href="/crate/{{name}}">
+					{{name}}
+				</a></li>
+				{{/each}}
+			</ul>
+		</div>
+		<div>
+			<h2>Some other ranking</h2>
+			<ul>
+			</ul>
+		</div>
+	</div>
+{{/frame}}
