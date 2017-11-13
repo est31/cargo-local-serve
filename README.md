@@ -85,6 +85,19 @@ The first point is covered here by using handlebars: as handlebars uses json, th
 
 `crates.io` would probably see huge improvements in performance by using [ember-fastboot](https://ember-fastboot.com/). However, this project targets to be even leaner than that.
 
+### Why did you choose the Iron framework?
+
+I'm in fact a big fan of the [rocket](https://rocket.rs/) framework:
+
+* Rocket makes stuff like URL parsing much easier than iron thanks to its macros. In general, the boilerplate is much less.
+* Rocket is monolithic. With decentralized frameworks like iron, the documentation is split up, you never know whether crate A is compatible with crate B. This issue only gets worse when you have breaking changes involved: which version of crate A is meant to be used together with which version of crate B? Is crate B even deprecated? Sure, the idea to have crates focussed on small tasks is really great, but when the crates become *too* small, I think it is better to offer a monolithic API to users. You can still have optional features to turn off various components.
+* In general, Rocket has much better docs than iron.
+
+I would really love to use Rocket, but this service isn't just meant to be compiled once by some server inside the cloud (an environment very much under my control).
+It is meant to be installed by a wide audience, on local machines, etc. Therefore, I don't want to require nightly, and I can't use Rocket as a consequence.
+
+The [iron](https://github.com/iron/iron) web framework is mature and well established, compared to e.g. [gotham](https://gotham.rs/). That is why I chose it!
+
 ## Logo credit
 
 The logo, under `site/static/package-logo.svg` has been adapted from
