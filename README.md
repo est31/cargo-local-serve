@@ -22,16 +22,16 @@ Some little demo for usage:
 ## TODO
 
 * Implement global scoring of crates by most depended on (directly), most depended on (transitive closure), IDK what else
-* Index page using that global scoring
 * Obtain list of mirrored versions of a crate
 * Add site for when the given version is not mirrored
-* Implement  "crate/cratename/versions" page
 * Implement "browse crates" page
 * Search feature
 * Upload feature
 
 ## Done
 
+* Index page that displays a few "top" crates by various scorings
+* Implement "versions/cratename" page
 * Render the markdown using pulldown-cmark
 * Source code formatting inside that rendering using syntect
 
