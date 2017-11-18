@@ -79,13 +79,8 @@ fn obtain_index_path(index_root :&Path, name :&str) -> io::Result<Option<PathBuf
 		return Ok(None);
 	}
 	if name.len() < 4 {
-		for e in try!(read_dir(index_root.join(format!("{}", name.len())))) {
-			let entry = try!(e);
-			if Ok(name.to_owned())  == entry.file_name().into_string() {
-				return Ok(Some(entry.path()));
-			}
-		}
-		return Ok(None);
+		return obtain_index_path_inner(&index_root.join(format!("{}", name.len())),
+			name, name);
 	}
 	obtain_index_path_inner(index_root, name, name)
 }
