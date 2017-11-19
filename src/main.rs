@@ -8,6 +8,7 @@ extern crate serde_derive;
 extern crate flate2;
 extern crate staticfile;
 extern crate mount;
+extern crate urlencoded;
 extern crate tar;
 extern crate toml;
 extern crate semver;
@@ -38,6 +39,8 @@ use flate2::write::GzEncoder;
 use staticfile::Static;
 
 use mount::Mount;
+
+use urlencoded::UrlEncodedQuery;
 
 use registry::registry::Registry;
 use registry::statistics::{compute_crate_statistics, CrateStats};
@@ -185,6 +188,16 @@ fn index(_: &mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+fn search(req :&mut Request) -> IronResult<Response> {
+	let mut resp = Response::new();
+
+	let hmap = req.get_ref::<UrlEncodedQuery>().unwrap();
+	let crate_data = registry::get_search_result_data(&CRATE_STATS, hmap);
+	resp.set_mut(Template::new("search", crate_data))
+		.set_mut(status::Ok);
+	Ok(resp)
+}
+
 fn main() {
 	env_logger::init().unwrap();
 
@@ -213,6 +226,7 @@ fn main() {
 	mount.mount("/crate", krate);
 	mount.mount("/static", Static::new(Path::new("./site/static"))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
+	mount.mount("/search", search);
 	mount.mount("/", index);
 	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);

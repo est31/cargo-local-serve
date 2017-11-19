@@ -6,6 +6,7 @@ use std::io::{Read, Seek, SeekFrom};
 use toml;
 use semver::Version as SvVersion;
 use semver::VersionReq;
+use urlencoded::QueryMap;
 
 pub mod registry;
 pub mod statistics;
@@ -385,6 +386,40 @@ pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
 		direct_rev_deps,
 	};
 	data.insert("c".to_string(), to_json(&index));
+
+	data
+}
+
+pub fn get_search_result_data(stats :&CrateStats, query_map :&QueryMap)
+		-> Map<String, Value> {
+
+	let search_term = (&query_map["q"][0]).clone(); // TODO add error handling
+
+	let results = stats.crate_names_interner.iter_values()
+		.filter(|s| s.contains(&search_term))
+		.map(|s| SearchResult { name : s.to_owned() })
+		.collect::<Vec<_>>();
+
+	#[derive(Serialize, Debug)]
+	struct SearchResult {
+		name :String,
+	}
+
+	#[derive(Serialize, Debug)]
+	struct SearchResults {
+		search_term :String,
+		results :Vec<SearchResult>,
+		results_length :usize,
+	}
+
+	let mut data = Map::new();
+
+	let results = SearchResults {
+		search_term,
+		results_length : results.len(),
+		results,
+	};
+	data.insert("c".to_string(), to_json(&results));
 
 	data
 }

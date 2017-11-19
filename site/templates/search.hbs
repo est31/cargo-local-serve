@@ -1,0 +1,15 @@
+{{#*inline "head-block" }}
+		<title>Search results for {{c.search_term}} - cargo-local-serve: packages for Rust</title>
+{{/inline}}
+{{#> frame}}
+	<div id="crates-heading">
+		<h1>Search results</h1> <h2>for '{{c.search_term}}'</h2>
+	</div>
+	<span>Displaying {{c.results_length}}</b> results:</span>
+	<ul class="white-rows">
+	{{#each c.results}}
+	<li><a href="/crate/{{name}}">{{name}}</a></li>
+	{{/each}}
+	</div>
+{{/frame}}
+
