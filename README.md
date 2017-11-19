@@ -25,7 +25,6 @@ Some little demo for usage:
 * Obtain list of mirrored versions of a crate
 * Add site for when the given version is not mirrored
 * Implement "browse crates" page
-* Search feature
 * Upload feature
 
 ## Done
@@ -34,6 +33,7 @@ Some little demo for usage:
 * Implement "versions/cratename" page
 * Render the markdown using pulldown-cmark
 * Source code formatting inside that rendering using syntect
+* Search feature
 
 ## Design principles
 
