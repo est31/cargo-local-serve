@@ -1,6 +1,5 @@
 use pulldown_cmark::{html, Parser, Event, Tag};
-#[allow(unused_imports)]
-use ammonia::clean;
+use ammonia::Builder;
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::ThemeSet;
 use std::borrow::Cow;
@@ -20,6 +19,7 @@ impl<'a> EventIter<'a> {
 
 lazy_static! {
 	static ref THEME_SET :ThemeSet = ThemeSet::load_defaults();
+	static ref AMMONIA_BUILDER :Builder<'static> = construct_ammonia_builder();
 }
 
 impl<'a> Iterator for EventIter<'a> {
@@ -70,6 +70,18 @@ impl<'a> Iterator for EventIter<'a> {
 	}
 }
 
+fn construct_ammonia_builder() -> Builder<'static> {
+	use std::iter;
+	let mut r = Builder::default();
+	// TODO: filter out everything that can have scr attributes.
+	// TODO: maybe replace all img's with their alt text?
+	r.rm_tags(iter::once("img"));
+	// TODO: do filtering of inline CSS
+	// (or even better: output classes instead of inline css)
+	r.add_tag_attributes("span", iter::once("style"));
+	r
+}
+
 /// Renders a given markdown string to sanitized HTML
 /// with formatted code blocks.
 pub fn render_markdown(markdown :&str) -> String {
@@ -77,6 +89,6 @@ pub fn render_markdown(markdown :&str) -> String {
 	let ev_it = EventIter::new(p);
 	let mut unsafe_html = String::new();
 	html::push_html(&mut unsafe_html, ev_it);
-	//let safe_html = clean(&unsafe_html);
-	unsafe_html
+	let safe_html = AMMONIA_BUILDER.clean(&unsafe_html).to_string();
+	safe_html
 }
