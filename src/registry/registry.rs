@@ -4,20 +4,61 @@ use std::path::{Path, PathBuf};
 use std::fs::{read_dir, File};
 use semver::VersionReq;
 use serde_json::from_str;
+use std::fmt;
+use serde::de::{self, Deserialize, Deserializer, Visitor};
 
 use semver::Version;
 
 use super::Dependency;
 
-#[derive(Deserialize, PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub enum DependencyKind {
-	#[serde(rename = "normal")]
 	Normal,
-	#[serde(rename = "build")]
 	Build,
-	#[serde(rename = "dev")]
 	Dev,
 }
+
+// custom impl needed due to https://github.com/serde-rs/serde/issues/1098
+// as default + rename_all = "lowercase" does not cover the kind: null case :/
+impl<'de> Deserialize<'de> for DependencyKind {
+	fn deserialize<D :Deserializer<'de>>(deserializer: D)
+			-> Result<Self, D::Error> {
+		struct DkVisitor;
+
+		impl<'de> Visitor<'de> for DkVisitor {
+			type Value = DependencyKind;
+
+			fn expecting(&self, formatter :&mut fmt::Formatter) -> fmt::Result {
+				formatter.write_str("`normal` or `build` or `dev`")
+			}
+
+			fn visit_none<E :de::Error>(self)
+					-> Result<DependencyKind, E> {
+				// We need to set a default as kind may not always be != null,
+				// or it may not be existent.
+				// https://github.com/rust-lang/crates.io/issues/1168
+				Ok(DependencyKind::Normal)
+			}
+			fn visit_some<D :Deserializer<'de>>(self, d :D)
+					-> Result<DependencyKind, D::Error> {
+				d.deserialize_any(DkVisitor)
+			}
+			fn visit_str<E :de::Error>(self, value :&str)
+					-> Result<DependencyKind, E> {
+				match value {
+					"normal" => Ok(DependencyKind::Normal),
+					"build" => Ok(DependencyKind::Build),
+					"dev" => Ok(DependencyKind::Dev),
+					_ => Err(de::Error::unknown_field(value,
+						&["normal", "build", "dev"])),
+				}
+			}
+		}
+		deserializer.deserialize_option(DkVisitor)
+	}
+}
+
+// TODO tests for dependency kind set to null or non existent.
 
 #[derive(Deserialize)]
 pub struct CrateDepJson {
@@ -145,36 +186,6 @@ impl Registry {
 	}
 }
 
-// These crates have a bug in their json files:
-// the dependencies don't contain a kind.
-// https://github.com/rust-lang/crates.io/issues/1168
-const IGNORED_NAMES :&[&'static str] = &[
-	"unicode_names_macros", "tempan", "pipes", "pidfile",
-	"plugin", "uchardet-sys", "uchardet", "julius", "openssl-sys",
-	"opentype", "openssl2-sys", "leveldb", "tgff", "vorbisfile-sys",
-	"vorbis-sys", "glium", "gl_generator", "glutin", "lazy",
-	"lapack", "rope", "ogg-sys", "epsilonz", "matrix", "email",
-	"hotspot", "miniz-sys", "redis", "resources_package",
-	"rethinkdb", "basehangul", "free", "fractran_macros", "chrono",
-	"docopt_macros", "date", "event", "event-emitter", "cssparser",
-	"obj", "xsv", "zip", "mio", "url", "utp", "rusqlite",
-	"rust-crypto", "capnp-rpc", "capnpc", "probability", "image",
-	"git2", "fingertree", "diecast", "blas", "slow_primes", "gl",
-	"enforce", "encoding-index-tradchinese", "encoding",
-	"encoding-index-simpchinese", "encoding-index-japanese",
-	"encoding-index-korean", "encoding-index-singlebyte",
-	"bzip2-sys", "bzip2", "conduit-log-requests",
-	"conduit-middleware", "conduit-utils",
-	"conduit-conditional-get", "conduit-router", "conduit",
-	"conduit-test", "conduit-static", "conduit-json-parser",
-	"typemap", "libssh2-sys", "liblapack-sys", "libz-sys",
-	"libgit2-sys", "libressl-pnacl-sys", "quickcheck_macros",
-	"error", "tiled", "time", "civet", "ssh2", "stream",
-	"strided", "string_telephone", "sfunc", "ordered-float",
-	"flate2", "monad", "modifier", "tailrec", "tabwriter",
-	"taskpool", "fftw3-sys", "grabbag"
-];
-
 pub fn obtain_all_crates_paths(index_root :&Path)
 		-> io::Result<Vec<(String, PathBuf)>> {
 	fn walk<F :FnMut(String, PathBuf)>(r :&Path,
@@ -183,9 +194,6 @@ pub fn obtain_all_crates_paths(index_root :&Path)
 			let entry = try!(e);
 			let path = entry.path();
 			if let Ok(s) = entry.file_name().into_string() {
-				if { let s :&str = &s; IGNORED_NAMES.contains(&s) } {
-					continue;
-				}
 				if s == ".git" && !d {
 					// We don't want to traverse into
 					// the .git directory.
