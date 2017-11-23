@@ -20,6 +20,10 @@ extern crate syntect;
 #[macro_use]
 extern crate lazy_static;
 extern crate string_interner;
+extern crate git2;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};

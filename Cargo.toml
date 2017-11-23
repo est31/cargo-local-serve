@@ -30,3 +30,6 @@ flate2 = "0.2"
 tar = "0.4"
 semver = { version = "0.9", features = ["serde"] }
 lazy_static = "0.2"
+git2 = "0.6"
+failure = "0.1.0"
+failure_derive = "0.1.0"

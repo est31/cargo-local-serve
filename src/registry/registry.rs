@@ -1,13 +1,15 @@
 use std::{io, env};
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::fs::{read_dir, File};
+use std::fs::File;
 use semver::VersionReq;
 use serde_json::from_str;
 use std::fmt;
 use serde::de::{self, Deserialize, Deserializer, Visitor};
+use failure::{Context, ResultExt};
 
 use semver::Version;
+use git2::{self, Repository};
 
 use super::Dependency;
 
@@ -98,39 +100,18 @@ pub struct Registry {
 	index_path :PathBuf,
 }
 
-fn obtain_index_path(index_root :&Path, name :&str) -> io::Result<Option<PathBuf>> {
-	fn obtain_index_path_inner(r :&Path, n :&str, n_orig :&str) ->
-			io::Result<Option<PathBuf>> {
-		for e in try!(read_dir(r)) {
-			let entry = try!(e);
-			let path = entry.path();
-			if let Ok(s) = entry.file_name().into_string() {
-				if path.is_dir() {
-					if n.starts_with(&s) {
-						return obtain_index_path_inner(&path,
-							&n[s.len()..], n_orig);
-					}
-				} else {
-					if n_orig == s {
-						return Ok(Some(path));
-					}
-				}
-			}
-		}
-		return Ok(None);
+fn obtain_crate_name_path(name :&str) -> String {
+	match name.len() {
+		1 => format!("1/{}", name),
+		2 => format!("2/{}", name),
+		3 => format!("3/{}/{}", &name[..1], name),
+		_ => format!("{}/{}/{}", &name[..2], &name[2..4], name),
 	}
-	if name.len() < 4 {
-		return obtain_index_path_inner(&index_root.join(format!("{}", name.len())),
-			name, name);
-	}
-	obtain_index_path_inner(index_root, name, name)
 }
 
-fn path_to_index_json(path :&Path) -> io::Result<Vec<CrateIndexJson>> {
-	let f = try!(File::open(path));
-	let br = io::BufReader::new(f);
+fn buf_to_index_json(buf :&[u8]) -> io::Result<Vec<CrateIndexJson>> {
 	let mut r = Vec::new();
-	for l in br.lines() {
+	for l in buf.lines() {
 		let l = try!(l);
 		r.push(try!(from_str(&l)));
 	}
@@ -138,6 +119,34 @@ fn path_to_index_json(path :&Path) -> io::Result<Vec<CrateIndexJson>> {
 }
 
 pub type AllCratesJson = Vec<(String, Vec<CrateIndexJson>)>;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Fail)]
+pub enum RegistryErrorKind {
+	#[fail(display = "Opening Registry failed")]
+	RegOpen,
+	#[fail(display = "Index reading failed")]
+	IndexRepoReading,
+	#[fail(display = "Index JSON reading failed")]
+	IndexJsonReading,
+	#[fail(display = "Index JSON file not found")]
+	IndexJsonMissing,
+}
+
+impl From<RegistryErrorKind> for Context<RegistryErrorKind> {
+	fn from(kind :RegistryErrorKind) -> Self {
+		Context::new(kind)
+	}
+}
+
+pub type RegistryError = Context<RegistryErrorKind>;
+
+fn get_repo_head_tree<'a>(repo :&'a Repository)
+		-> Result<git2::Tree<'a>, git2::Error> {
+	let head_id = try!(repo.refname_to_id("refs/remotes/origin/master"));
+	let head_commit = try!(repo.find_commit(head_id));
+	let head_tree = try!(head_commit.tree());
+	Ok(head_tree)
+}
 
 impl Registry {
 	pub fn from_name(name :&str) -> Result<Self, env::VarError> {
@@ -152,31 +161,64 @@ impl Registry {
 			index_path,
 		})
 	}
-	pub fn get_crate_json(&self, crate_name :&str) ->
-			io::Result<Vec<CrateIndexJson>> {
-		let json_path = try!(obtain_index_path(&self.index_path, crate_name));
-		let json_path = if let Some(p) = json_path {
-			p
-		} else {
-			return Ok(vec![]);
+	pub fn get_crate_json(&self, crate_name :&str)
+			-> Result<Vec<CrateIndexJson>, RegistryError> {
+		use self::RegistryErrorKind::*;
+
+		let repo = try!(git2::Repository::open(&self.index_path).context(RegOpen));
+		let head_tree = try!(get_repo_head_tree(&repo).context(IndexRepoReading));
+
+		let path_str = obtain_crate_name_path(crate_name);
+		let entry = try!(head_tree.get_path(&Path::new(&path_str))
+			.with_context(|e :&git2::Error| {
+				if e.code() == git2::ErrorCode::NotFound {
+					IndexJsonMissing
+				} else {
+					IndexJsonReading
+				}
+			}));
+		let obj = try!(entry.to_object(&repo).context(IndexRepoReading));
+		let bytes :&[u8] = match obj.as_blob() {
+			Some(b) => b.content(),
+			None => try!(Err(IndexRepoReading)),
 		};
-		let r = try!(path_to_index_json(&json_path));
-		Ok(r)
+		let json = try!(buf_to_index_json(bytes).context(IndexJsonReading));
+		Ok(json)
 	}
 	pub fn get_all_crates_json(&self) ->
-			io::Result<AllCratesJson> {
-		let paths = try!(obtain_all_crates_paths(&self.index_path));
-		let mut r = Vec::with_capacity(paths.len());
-		for (crate_name, path) in paths {
+			Result<AllCratesJson, RegistryError> {
+		use self::RegistryErrorKind::*;
 
-			let json = try!(path_to_index_json(&path));
-			/*let json = match path_to_index_json(&path) {
-				Ok(v) => v,
-				Err(_) => { println!("{:?}", &path); continue;},
-			};*/
-			r.push((crate_name, json));
+		let repo = try!(git2::Repository::open(&self.index_path).context(RegOpen));
+		let head_tree = try!(get_repo_head_tree(&repo).context(IndexRepoReading));
+
+		fn walk<F :FnMut(&str, &[u8]) -> Result<(), RegistryError>>(
+				t :&git2::Tree, repo :&git2::Repository,
+				d :bool, f :&mut F) -> Result<(), RegistryError> {
+			for entry in t.iter() {
+				let entry_obj = try!(entry.to_object(&repo)
+					.context(IndexRepoReading));
+				if let Some(tree) = entry_obj.as_tree() {
+					try!(walk(tree, repo, false, f));
+				} else if let Some(blob) = entry_obj.as_blob() {
+					if !d {
+						let name = match entry.name() {
+							Some(v) => v,
+							None => try!(Err(IndexRepoReading)),
+						};
+						try!(f(name, blob.content()));
+					}
+				}
+			}
+			Ok(())
 		}
-		Ok(r)
+		let mut res = Vec::new();
+		try!(walk(&head_tree, &repo, true, &mut |name, blob| {
+			let json = try!(buf_to_index_json(blob).context(IndexJsonReading));
+			res.push((name.to_owned(), json));
+			Ok(())
+		}));
+		Ok(res)
 	}
 	pub fn get_crate_file(&self, crate_name :&str, crate_version :&Version) ->
 			io::Result<File> {
@@ -184,39 +226,4 @@ impl Registry {
 			crate_name, crate_version));
 		Ok(try!(File::open(p)))
 	}
-}
-
-pub fn obtain_all_crates_paths(index_root :&Path)
-		-> io::Result<Vec<(String, PathBuf)>> {
-	fn walk<F :FnMut(String, PathBuf)>(r :&Path,
-			d :bool, f :&mut F) -> io::Result<()> {
-		for e in try!(read_dir(r)) {
-			let entry = try!(e);
-			let path = entry.path();
-			if let Ok(s) = entry.file_name().into_string() {
-				if s == ".git" && !d {
-					// We don't want to traverse into
-					// the .git directory.
-					continue;
-				}
-				if path.is_dir() {
-					try!(walk(&path, true, f));
-				} else {
-					// This check is to prevent files on the first level
-					// to be added.
-					// There is only one such file: it is config.json.
-					// We don't want to output it!
-					if d {
-						f(s, path);
-					}
-				}
-			}
-		}
-		Ok(())
-	}
-	let mut res = Vec::new();
-	try!(walk(index_root, false, &mut |s, p| {
-		res.push((s, p));
-	}));
-	Ok(res)
 }
