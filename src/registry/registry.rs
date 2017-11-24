@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use semver::VersionReq;
 use serde_json::from_str;
-use std::fmt;
-use serde::de::{self, Deserialize, Deserializer, Visitor};
+use serde::de::{Deserialize, Deserializer};
 use failure::{Context, ResultExt};
 
 use semver::Version;
@@ -13,51 +12,24 @@ use git2::{self, Repository};
 
 use super::Dependency;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(Deserialize, PartialEq, Eq, Hash, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum DependencyKind {
 	Normal,
 	Build,
 	Dev,
 }
 
-// custom impl needed due to https://github.com/serde-rs/serde/issues/1098
+// custom function needed due to https://github.com/serde-rs/serde/issues/1098
 // as default + rename_all = "lowercase" does not cover the kind: null case :/
-impl<'de> Deserialize<'de> for DependencyKind {
-	fn deserialize<D :Deserializer<'de>>(deserializer: D)
-			-> Result<Self, D::Error> {
-		struct DkVisitor;
+fn nullable_dep_kind<'de, D :Deserializer<'de>>(deserializer :D)
+		-> Result<DependencyKind, D::Error> {
+	let opt = try!(Option::deserialize(deserializer));
+	Ok(opt.unwrap_or(DependencyKind::Normal))
+}
 
-		impl<'de> Visitor<'de> for DkVisitor {
-			type Value = DependencyKind;
-
-			fn expecting(&self, formatter :&mut fmt::Formatter) -> fmt::Result {
-				formatter.write_str("`normal` or `build` or `dev`")
-			}
-
-			fn visit_none<E :de::Error>(self)
-					-> Result<DependencyKind, E> {
-				// We need to set a default as kind may not always be != null,
-				// or it may not be existent.
-				// https://github.com/rust-lang/crates.io/issues/1168
-				Ok(DependencyKind::Normal)
-			}
-			fn visit_some<D :Deserializer<'de>>(self, d :D)
-					-> Result<DependencyKind, D::Error> {
-				d.deserialize_any(DkVisitor)
-			}
-			fn visit_str<E :de::Error>(self, value :&str)
-					-> Result<DependencyKind, E> {
-				match value {
-					"normal" => Ok(DependencyKind::Normal),
-					"build" => Ok(DependencyKind::Build),
-					"dev" => Ok(DependencyKind::Dev),
-					_ => Err(de::Error::unknown_field(value,
-						&["normal", "build", "dev"])),
-				}
-			}
-		}
-		deserializer.deserialize_option(DkVisitor)
-	}
+fn normal_dep_kind() -> DependencyKind {
+	DependencyKind::Normal
 }
 
 // TODO tests for dependency kind set to null or non existent.
@@ -70,6 +42,10 @@ pub struct CrateDepJson {
 	pub target :Option<String>,
 	pub req :VersionReq,
 	pub optional :bool,
+	// We need to set a default as kind may not always be != null,
+	// or it may not be existent.
+	// https://github.com/rust-lang/crates.io/issues/1168
+	#[serde(default = "normal_dep_kind", deserialize_with = "nullable_dep_kind")]
 	pub kind :DependencyKind,
 }
 
