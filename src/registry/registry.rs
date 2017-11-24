@@ -10,7 +10,12 @@ use failure::{Context, ResultExt};
 use semver::Version;
 use git2::{self, Repository};
 
-use super::Dependency;
+#[derive(Serialize, Debug)]
+pub struct Dependency {
+	name :String,
+	req :String,
+	optional :bool,
+}
 
 #[derive(Deserialize, PartialEq, Eq, Hash, Debug)]
 #[serde(rename_all = "lowercase")]

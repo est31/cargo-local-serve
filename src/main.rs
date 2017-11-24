@@ -20,10 +20,9 @@ extern crate syntect;
 #[macro_use]
 extern crate lazy_static;
 extern crate string_interner;
-extern crate git2;
 extern crate failure;
-#[macro_use]
-extern crate failure_derive;
+
+extern crate cargo_local_serve;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -46,10 +45,10 @@ use mount::Mount;
 
 use urlencoded::UrlEncodedQuery;
 
-use registry::registry::Registry;
-use registry::statistics::{compute_crate_statistics, CrateStats};
+use cargo_local_serve::registry::registry::Registry;
+use cargo_local_serve::registry::statistics::{compute_crate_statistics, CrateStats};
 
-mod registry;
+mod registry_data;
 mod markdown_render;
 mod escape;
 mod code_format;
@@ -142,7 +141,8 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	let name = path[0];
 	let opt_version = path.get(1).map(|v| *v);
 	let mut resp = Response::new();
-	let crate_data = registry::get_crate_data(name.to_string(), &REGISTRY, opt_version);
+	let crate_data = registry_data::get_crate_data(name.to_string(),
+		&REGISTRY, opt_version);
 	if let Some(data) = crate_data {
 		resp.set_mut(Template::new("crate", data))
 			.set_mut(status::Ok);
@@ -160,7 +160,7 @@ fn versions(r: &mut Request) -> IronResult<Response> {
 	let refferer = r.headers.get::<Referer>()
 		.map(|s| s.as_str().to_string());
 
-	let crate_data = registry::get_versions_data(name, &REGISTRY, refferer);
+	let crate_data = registry_data::get_versions_data(name, &REGISTRY, refferer);
 	resp.set_mut(Template::new("versions", crate_data))
 		.set_mut(status::Ok);
 	Ok(resp)
@@ -176,7 +176,7 @@ fn reverse_dependencies(r: &mut Request) -> IronResult<Response> {
 
 	let only_latest_versions = false;
 
-	let crate_data = registry::get_reverse_dependencies(name,
+	let crate_data = registry_data::get_reverse_dependencies(name,
 		only_latest_versions, &CRATE_STATS, refferer);
 	resp.set_mut(Template::new("reverse_dependencies", crate_data))
 		.set_mut(status::Ok);
@@ -186,7 +186,7 @@ fn reverse_dependencies(r: &mut Request) -> IronResult<Response> {
 fn index(_: &mut Request) -> IronResult<Response> {
 	let mut resp = Response::new();
 
-	let crate_data = registry::get_index_data(&CRATE_STATS);
+	let crate_data = registry_data::get_index_data(&CRATE_STATS);
 	resp.set_mut(Template::new("index", crate_data))
 		.set_mut(status::Ok);
 	Ok(resp)
@@ -196,7 +196,7 @@ fn search(req :&mut Request) -> IronResult<Response> {
 	let mut resp = Response::new();
 
 	let hmap = req.get_ref::<UrlEncodedQuery>().unwrap();
-	let crate_data = registry::get_search_result_data(&CRATE_STATS, hmap);
+	let crate_data = registry_data::get_search_result_data(&CRATE_STATS, hmap);
 	resp.set_mut(Template::new("search", crate_data))
 		.set_mut(status::Ok);
 	Ok(resp)
