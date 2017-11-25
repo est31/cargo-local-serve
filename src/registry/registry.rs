@@ -81,7 +81,7 @@ pub struct Registry {
 	index_path :PathBuf,
 }
 
-fn obtain_crate_name_path(name :&str) -> String {
+pub fn obtain_crate_name_path(name :&str) -> String {
 	match name.len() {
 		1 => format!("1/{}", name),
 		2 => format!("2/{}", name),
