@@ -346,15 +346,16 @@ pub fn get_reverse_dependencies(name :&str,
 pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
 
 	#[derive(Serialize, Debug)]
-	struct CrateWithRevDeps {
+	struct CrateWithCount {
 		name :String,
 		count :usize,
 	}
 
 	#[derive(Serialize, Debug)]
 	struct Index {
-		transitive_rev_deps :Vec<CrateWithRevDeps>,
-		direct_rev_deps :Vec<CrateWithRevDeps>,
+		direct_rev_deps :Vec<CrateWithCount>,
+		transitive_rev_deps :Vec<CrateWithCount>,
+		most_versions :Vec<CrateWithCount>,
 	}
 
 	let mut data = Map::new();
@@ -363,7 +364,7 @@ pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
 
 	let ddon = &stats.most_directly_depended_on;
 	let mut direct_rev_deps = ddon[ddon.len().saturating_sub(10)..].iter()
-		.map(|&(name, count)| CrateWithRevDeps {
+		.map(|&(name, count)| CrateWithCount {
 			name : stats.crate_names_interner.resolve(name)
 				.unwrap().to_string(),
 			count,
@@ -371,9 +372,20 @@ pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
 		.collect::<Vec<_>>();
 	direct_rev_deps.reverse();
 
+	let most_v = &stats.most_versions;
+	let mut most_versions = most_v[most_v.len().saturating_sub(10)..].iter()
+		.map(|&(name, count)| CrateWithCount {
+			name : stats.crate_names_interner.resolve(name)
+				.unwrap().to_string(),
+			count,
+		})
+		.collect::<Vec<_>>();
+	most_versions.reverse();
+
 	let index = Index {
 		transitive_rev_deps,
 		direct_rev_deps,
+		most_versions,
 	};
 	data.insert("c".to_string(), to_json(&index));
 

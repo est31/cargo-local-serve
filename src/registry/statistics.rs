@@ -16,6 +16,8 @@ pub struct CrateStats {
 	/// The algorithm doesn't count any reverse dependency where only
 	/// a past version depended on a crate, but not the latest one.
 	pub most_directly_depended_on :Vec<(CrateName, usize)>,
+	/// The list of crates ordered by the number of versions they have.
+	pub most_versions: Vec<(CrateName, usize)>,
 }
 
 pub fn compute_crate_statistics(acj :&AllCratesJson) -> CrateStats {
@@ -53,10 +55,19 @@ pub fn compute_crate_statistics(acj :&AllCratesJson) -> CrateStats {
 		.collect::<Vec<_>>();
 	most_directly_depended_on.sort_by_key(|v| v.1);
 
+	let mut most_versions = acj.iter()
+		.map(|&(ref n, ref v)| {
+			let ni = names_interner.get_or_intern(n.clone());
+			(ni, v.len())
+		})
+		.collect::<Vec<_>>();
+	most_versions.sort_by_key(|v| v.1);
+
 	CrateStats {
 		crate_names_interner : names_interner,
 		reverse_dependencies : revd,
 		latest_crate_versions,
 		most_directly_depended_on,
+		most_versions,
 	}
 }

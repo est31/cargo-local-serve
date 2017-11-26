@@ -11,7 +11,7 @@
 			<ul>
 				{{#each c.direct_rev_deps}}
 				<li><a href="/crate/{{name}}">
-					{{name}}({{count}})
+					{{name}} ({{count}})
 				</a></li>
 				{{/each}}
 			</ul>
@@ -27,8 +27,13 @@
 			</ul>
 		</div>
 		<div>
-			<h2>Some other ranking</h2>
+			<h2>Most versions</h2>
 			<ul>
+				{{#each c.most_versions}}
+				<li><a href="/crate/{{name}}">
+					{{name}} ({{count}})
+				</a></li>
+				{{/each}}
 			</ul>
 		</div>
 	</div>
