@@ -16,7 +16,7 @@ The `crates.io` team has publicly stated that the only goal of the codebase is t
 Some little demo for usage:
 
 1. clone
-2. do `cargo run` inside the repo
+2. do `cargo run --bin cargo-local-serve` inside the repo
 3. navigate your browser to some random crate, e.g. `http://localhost:3000/crate/winapi` or `http://localhost:3000/crate/futures`
 
 ## TODO
