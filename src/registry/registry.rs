@@ -66,6 +66,7 @@ impl CrateDepJson {
 
 #[derive(Deserialize)]
 pub struct CrateIndexJson {
+	pub name :String,
 	#[serde(rename = "vers")]
 	pub version :Version,
 	#[serde(rename = "deps")]
@@ -196,7 +197,14 @@ impl Registry {
 		let mut res = Vec::new();
 		try!(walk(&head_tree, &repo, true, &mut |name, blob| {
 			let json = try!(buf_to_index_json(blob).context(IndexJsonReading));
-			res.push((name.to_owned(), json));
+			let name = if let Some(v) = json.iter().next() {
+				// This is important as the file name is always in lowercase,
+				// but the actual name of the crate may have mixed casing.
+				v.name.to_owned()
+			} else {
+				name.to_owned()
+			};
+			res.push((name, json));
 			Ok(())
 		}));
 		Ok(res)
