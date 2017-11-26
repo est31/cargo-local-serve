@@ -126,21 +126,6 @@ macro_rules! otry {
 	}};
 }
 
-#[derive(Deserialize)]
-struct CratePackage {
-	repository :Option<String>,
-	homepage :Option<String>,
-	description :String,
-	license :String,
-	authors :Vec<String>,
-	readme :Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CrateInfo {
-	package :CratePackage,
-}
-
 fn extract_path_from_gz<T :Read>(r :T,
 		path_ex :&str) -> Option<Vec<u8>> {
 	let decoded = if let Some(d) = r.gz_decode().ok() {
@@ -168,6 +153,22 @@ fn extract_path_from_gz<T :Read>(r :T,
 
 pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
 		-> Option<Map<String, Value>> {
+
+	#[derive(Deserialize)]
+	struct CratePackage {
+		repository :Option<String>,
+		homepage :Option<String>,
+		description :String,
+		license :String,
+		authors :Vec<String>,
+		readme :Option<String>,
+	}
+
+	#[derive(Deserialize)]
+	struct CrateInfo {
+		package :CratePackage,
+	}
+
 	let mut data = Map::new();
 
 	// First step: find the path to the crate.
@@ -262,16 +263,17 @@ pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
 	Some(data)
 }
 
-#[derive(Serialize, Debug)]
-struct Versions {
-	name :String,
-	refferer :Option<String>,
-	versions_length :usize,
-	versions :Vec<Version>,
-}
-
 pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
 		-> Map<String, Value> {
+
+	#[derive(Serialize, Debug)]
+	struct Versions {
+		name :String,
+		refferer :Option<String>,
+		versions_length :usize,
+		versions :Vec<Version>,
+	}
+
 	let mut data = Map::new();
 
 	let crate_json = reg.get_crate_json(&name).unwrap();
@@ -293,24 +295,25 @@ pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
 	data
 }
 
-#[derive(Serialize, Debug)]
-struct RevDep {
-	name :String,
-	req :VersionReq,
-	version :SvVersion,
-}
-
-#[derive(Serialize, Debug)]
-struct RevDependencies {
-	name :String,
-	refferer :Option<String>,
-	rev_d_len :usize,
-	rev_d :Vec<RevDep>,
-}
-
 pub fn get_reverse_dependencies(name :&str,
 		only_latest_versions :bool,
 		stats :&CrateStats, refferer :Option<String>) -> Map<String, Value> {
+
+	#[derive(Serialize, Debug)]
+	struct RevDep {
+		name :String,
+		req :VersionReq,
+		version :SvVersion,
+	}
+
+	#[derive(Serialize, Debug)]
+	struct RevDependencies {
+		name :String,
+		refferer :Option<String>,
+		rev_d_len :usize,
+		rev_d :Vec<RevDep>,
+	}
+
 	let mut data = Map::new();
 
 	// TODO don't use unwrap, and use "checked" getting below.
