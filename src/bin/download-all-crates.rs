@@ -78,7 +78,7 @@ fn main() {
 	println!("Using directory {} to store the files.",
 		storage_base.to_str().unwrap());
 
-	let cl = Client::new();
+	let cl = Client::builder().gzip(false).build().unwrap();
 
 	let mut ctr = 0;
 
@@ -96,7 +96,7 @@ fn main() {
 					// verify the checksum
 					let mut ring_ctx = HashCtx(Context::new(&SHA256));
 					io::copy(&mut f, &mut ring_ctx).unwrap();
-					let hash_str = finish_and_get_digest_hex();
+					let hash_str = ring_ctx.finish_and_get_digest_hex();
 					if hash_str == v.checksum {
 						println!("[{}/{}] Checksum verified for {} v{}",
 							ctr, total_file_count, name, v.version);
