@@ -17,7 +17,7 @@ pub struct Dependency {
 	optional :bool,
 }
 
-#[derive(Deserialize, PartialEq, Eq, Hash, Debug)]
+#[derive(Deserialize, PartialEq, Eq, Hash, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum DependencyKind {
 	Normal,
@@ -39,7 +39,7 @@ fn normal_dep_kind() -> DependencyKind {
 
 // TODO tests for dependency kind set to null or non existent.
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct CrateDepJson {
 	pub name :String,
 	pub features :Vec<String>,
@@ -64,7 +64,7 @@ impl CrateDepJson {
 	}
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct CrateIndexJson {
 	pub name :String,
 	#[serde(rename = "vers")]
