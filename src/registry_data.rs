@@ -1,6 +1,6 @@
 use hbs::handlebars::to_json;
 use serde_json::value::{Value, Map};
-use flate2::FlateReadExt;
+use flate2::read::GzDecoder;
 use tar::Archive;
 use std::io::{Read, Seek, SeekFrom};
 use toml;
@@ -128,11 +128,7 @@ macro_rules! otry {
 
 fn extract_path_from_gz<T :Read>(r :T,
 		path_ex :&str) -> Option<Vec<u8>> {
-	let decoded = if let Some(d) = r.gz_decode().ok() {
-		d
-	} else {
-		return None
-	};
+	let decoded = GzDecoder::new(r);
 	let mut archive = Archive::new(decoded);
 	for entry in otry!(archive.entries()) {
 		let mut entry = otry!(entry);

@@ -59,7 +59,7 @@ impl AfterMiddleware for GzMiddleware {
 	fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
 
 		let compressed_bytes = resp.body.as_mut().map(|b| {
-			let mut encoder = GzEncoder::new(Vec::new(), Compression::Best);
+			let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
 			{
 				let _ = b.write_body(&mut encoder);
 			}
