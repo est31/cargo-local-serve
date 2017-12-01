@@ -114,12 +114,6 @@ pub enum RegistryErrorKind {
 	IndexJsonMissing,
 }
 
-impl From<RegistryErrorKind> for Context<RegistryErrorKind> {
-	fn from(kind :RegistryErrorKind) -> Self {
-		Context::new(kind)
-	}
-}
-
 pub type RegistryError = Context<RegistryErrorKind>;
 
 fn get_repo_head_tree<'a>(repo :&'a Repository)
@@ -136,7 +130,8 @@ impl Registry {
 		// For crates.io it is "github.com-1ecc6299db9ec823"
 		let home = try!(env::var("HOME"));
 		let base_path = Path::new(&home).join(".cargo/registry/");
-		let cache_path = base_path.join("cache").join(name);
+		//let cache_path = base_path.join("cache").join(name);
+		let cache_path = env::current_dir().unwrap().join("crate-archives");
 		let index_path = base_path.join("index").join(name);
 		Ok(Registry {
 			cache_path,
@@ -211,8 +206,10 @@ impl Registry {
 	}
 	pub fn get_crate_file(&self, crate_name :&str, crate_version :&Version) ->
 			io::Result<File> {
-		let p = self.cache_path.join(format!("{}-{}.crate",
-			crate_name, crate_version));
+		let p = self.cache_path
+			.join(obtain_crate_name_path(crate_name))
+			.join(format!("{}-{}.crate",
+				crate_name, crate_version));
 		Ok(try!(File::open(p)))
 	}
 }
