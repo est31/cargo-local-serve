@@ -174,11 +174,11 @@ a:hover {
 	max-width: 640px;
 }
 
-.docs pre, .docs code {
+.docs pre, .docs code, .file-content pre, .file-content code {
 	font-family: Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;
 }
 
-.docs pre {
+.docs pre, .file-content pre {
 	color: #fff;
 	border-radius: .5em;
 	border: .3em solid #545454;
