@@ -119,7 +119,7 @@ fn csp_hdr(req :&mut Request, mut res :Response) -> IronResult<Response> {
 		// TODO find a way to avoid inline css in the syntect formatter
 		// and then remove || z == &"crate".
 		// https://github.com/trishume/syntect/issues/121
-		if z == &"static" || z == &"crate" {
+		if z == &"static" || z == &"crate" || z == &"files" {
 			// Needed for inline CSS inside SVG
 			true
 		} else {
