@@ -1,0 +1,14 @@
+{{#*inline "head-block" }}
+		<title>cargo-local-serve: packages for Rust</title>
+{{/inline}}
+{{#> frame}}
+	<div id="crates-heading">
+		<h1>File listing</h1> <h2>for '{{c.name}}'</h2>
+	</div>
+	<span>Displaying {{c.file_count}}</b> children:</span>
+	<ul class="white-rows">
+	{{#each c.files}}
+	<li><a href="/files/{{../c.name}}/{{../c.version}}/{{name}}">{{name}}</a></li>
+	{{/each}}
+	</div>
+{{/frame}}

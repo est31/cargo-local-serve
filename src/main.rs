@@ -202,6 +202,25 @@ fn search(req :&mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+fn crate_files(req :&mut Request) -> IronResult<Response> {
+	use self::registry_data::CrateFileData::*;
+
+	let path = req.url.path();
+	let name = path[0];
+	let version = path[1];
+	let mut resp = Response::new();
+
+	let crate_file_data = registry_data::get_crate_file_data(&REGISTRY,
+		name, version, &path[2..]);
+	let template = match crate_file_data {
+		FileListing(data) => Template::new("file-listing", data),
+		FileContent(data) => Template::new("file-content", data),
+	};
+	resp.set_mut(template)
+		.set_mut(status::Ok);
+	Ok(resp)
+}
+
 fn main() {
 	env_logger::init().unwrap();
 
@@ -231,6 +250,7 @@ fn main() {
 	mount.mount("/static", Static::new(Path::new("./site/static"))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
 	mount.mount("/search", search);
+	mount.mount("/files", crate_files);
 	mount.mount("/", index);
 	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);

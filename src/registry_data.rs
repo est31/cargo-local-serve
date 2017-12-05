@@ -424,3 +424,121 @@ pub fn get_search_result_data(stats :&CrateStats, query_map :&QueryMap)
 
 	data
 }
+
+pub enum CrateFileData {
+	FileListing(Map<String, Value>),
+	FileContent(Map<String, Value>),
+}
+
+pub fn get_crate_file_data(reg :&Registry,
+	name :&str, version_str :&str, path :&[&str])
+		-> CrateFileData {
+	use std::str;
+	use code_format::highlight_string_snippet;
+	use syntect::parsing::SyntaxSet;
+	use syntect::highlighting::ThemeSet;
+
+	let mut data = Map::new();
+
+	// First step: find the path to the crate.
+	let version = SvVersion::parse(version_str).unwrap();
+	let mut f = match reg.get_crate_file(&name, &version).ok() {
+		Some(f) => f,
+		None => panic!("Version {} of crate {} not mirrored", version, name),
+	};
+	let file_path_str = path.iter().fold(String::new(), |s, u| s + "/" + u);
+
+	if file_path_str.len() <= 1 {
+
+		#[derive(Serialize, Debug)]
+		struct FileEntry {
+			name :String,
+		}
+
+		#[derive(Serialize, Debug)]
+		struct CrateFileListing {
+			name :String,
+			version :String,
+			file_count :usize,
+			files :Vec<FileEntry>,
+		}
+
+		let file_list = {
+			let mut l = Vec::new();
+			let decoded = GzDecoder::new(&f);
+			let mut archive = Archive::new(decoded);
+			for entry in archive.entries().unwrap() {
+				let mut entry = entry.unwrap();
+				let path = entry.path().unwrap();
+				let s :String = path.to_str().unwrap().to_owned();
+				l.push(s);
+			}
+			l
+		};
+		f.seek(SeekFrom::Start(0)).unwrap();
+
+		let listing = CrateFileListing {
+			name : name.to_owned(),
+			version : version_str.to_owned(),
+			file_count : file_list.len(),
+			files : file_list.into_iter().map(|s| FileEntry {
+				name : s,
+			}).collect::<Vec<_>>(),
+		};
+		data.insert("c".to_string(), to_json(&listing));
+
+		CrateFileData::FileListing(data)
+	} else {
+		#[derive(Serialize, Debug)]
+		struct CrateFileContent {
+			file_path :String,
+			content_html :String,
+		}
+		let content_raw = extract_path_from_gz(&f, &file_path_str[1..])
+			.expect("Path not found in crate file");
+		let content_html = match str::from_utf8(&content_raw) {
+			Ok(content_str) => {
+				let extension = if file_path_str.contains(".") {
+					file_path_str.split(".").last()
+				} else {
+					None
+				};
+				if extension == Some("md") {
+					render_markdown(content_str)
+				} else {
+					// TODO sanitize using ammonia
+
+					thread_local!(static SYN_SET :SyntaxSet = SyntaxSet::load_defaults_newlines());
+
+					let theme_set :ThemeSet = ThemeSet::load_defaults();
+					let theme = &theme_set.themes["base16-ocean.dark"];
+
+					SYN_SET.with(|s| {
+						let syn = extension.and_then(|ext| s.find_syntax_by_extension(ext));
+						if let Some(syntax) = syn {
+							// TODO find a way to avoid inline css in the syntect formatter
+							let formatted = highlight_string_snippet(content_str,
+								&syntax, theme);
+							formatted
+						} else {
+							let code_block = format!("<pre><code>{}</code></pre>",
+								content_str);
+							code_block
+						}
+					})
+				}
+			},
+			Err(_) => {
+				"(Not in UTF-8 format)".to_owned()
+			},
+		};
+		let content = CrateFileContent {
+			file_path : file_path_str,
+			content_html
+		};
+		data.insert("c".to_string(), to_json(&content));
+		CrateFileData::FileContent(data)
+	}
+
+
+}
