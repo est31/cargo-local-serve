@@ -1,9 +1,7 @@
 use pulldown_cmark::{html, Parser, Event, Tag};
 use ammonia::Builder;
-use syntect::parsing::SyntaxSet;
-use syntect::highlighting::ThemeSet;
+use syntect_format::SyntectFormatter;
 use std::borrow::Cow;
-use code_format::highlight_string_snippet;
 
 struct EventIter<'a> {
 	p :Parser<'a>,
@@ -18,7 +16,6 @@ impl<'a> EventIter<'a> {
 }
 
 lazy_static! {
-	static ref THEME_SET :ThemeSet = ThemeSet::load_defaults();
 	static ref AMMONIA_BUILDER :Builder<'static> = construct_ammonia_builder();
 }
 
@@ -46,22 +43,9 @@ impl<'a> Iterator for EventIter<'a> {
 			match &next {
 				&Some(Event::End(Tag::CodeBlock(ref token))) => {
 
-					thread_local!(static SYN_SET :SyntaxSet = SyntaxSet::load_defaults_newlines());
-
-					let theme = &THEME_SET.themes["base16-ocean.dark"];
-
-					return SYN_SET.with(|s| {
-						if let Some(syntax) = s.find_syntax_by_token(token) {
-							// TODO find a way to avoid inline css in the syntect formatter
-							let formatted = highlight_string_snippet(&text_buf,
-								&syntax, theme);
-							return Some(Event::Html(Cow::Owned(formatted)));
-						} else {
-							let code_block = format!("<pre><code>{}</code></pre>",
-								text_buf);
-							return Some(Event::Html(Cow::Owned(code_block)));
-						}
-					});
+					let fmt = SyntectFormatter::new().token(token);
+					let formatted = fmt.highlight_snippet(&text_buf);
+					return Some(Event::Html(Cow::Owned(formatted)));
 				},
 				_ => panic!("Unexpected element inside codeblock mode {:?}", next),
 			}

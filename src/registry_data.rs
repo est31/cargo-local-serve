@@ -434,9 +434,7 @@ pub fn get_crate_file_data(reg :&Registry,
 	name :&str, version_str :&str, path :&[&str])
 		-> CrateFileData {
 	use std::str;
-	use code_format::highlight_string_snippet;
-	use syntect::parsing::SyntaxSet;
-	use syntect::highlighting::ThemeSet;
+	use syntect_format::SyntectFormatter;
 
 	let mut data = Map::new();
 
@@ -506,26 +504,13 @@ pub fn get_crate_file_data(reg :&Registry,
 				if extension == Some("md") {
 					render_markdown(content_str)
 				} else {
+					let mut fmt = SyntectFormatter::new();
+					if let Some(ext) = extension {
+						fmt = fmt.extension(ext);
+					}
+					let html_unsanitized = fmt.highlight_snippet(content_str);
 					// TODO sanitize using ammonia
-
-					thread_local!(static SYN_SET :SyntaxSet = SyntaxSet::load_defaults_newlines());
-
-					let theme_set :ThemeSet = ThemeSet::load_defaults();
-					let theme = &theme_set.themes["base16-ocean.dark"];
-
-					SYN_SET.with(|s| {
-						let syn = extension.and_then(|ext| s.find_syntax_by_extension(ext));
-						if let Some(syntax) = syn {
-							// TODO find a way to avoid inline css in the syntect formatter
-							let formatted = highlight_string_snippet(content_str,
-								&syntax, theme);
-							formatted
-						} else {
-							let code_block = format!("<pre><code>{}</code></pre>",
-								content_str);
-							code_block
-						}
-					})
+					html_unsanitized
 				}
 			},
 			Err(_) => {

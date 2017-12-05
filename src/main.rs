@@ -52,6 +52,7 @@ mod registry_data;
 mod markdown_render;
 mod escape;
 mod code_format;
+mod syntect_format;
 
 pub struct GzMiddleware;
 
