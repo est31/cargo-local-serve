@@ -489,6 +489,8 @@ pub fn get_crate_file_data(reg :&Registry,
 	} else {
 		#[derive(Serialize, Debug)]
 		struct CrateFileContent {
+			name :String,
+			version :String,
 			file_path :String,
 			content_html :String,
 		}
@@ -518,6 +520,8 @@ pub fn get_crate_file_data(reg :&Registry,
 			},
 		};
 		let content = CrateFileContent {
+			name : name.to_owned(),
+			version : version_str.to_owned(),
 			file_path : file_path_str,
 			content_html
 		};
