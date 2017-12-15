@@ -7,11 +7,11 @@ authors = ["est31 <MTest31@outlook.com>"]
 [dependencies]
 
 #iron related
-handlebars-iron = "0.25"
-iron = "0.5.0"
-staticfile = { version = "0.4", features = ["cache"] }
+handlebars-iron = "0.26"
+iron = "0.6.0"
+staticfile = { version = "0.5", features = ["cache"] }
 urlencoded = "0.6"
-mount = "0.3"
+mount = "0.4"
 hyper = "0.10"
 
 # markdown rendering
