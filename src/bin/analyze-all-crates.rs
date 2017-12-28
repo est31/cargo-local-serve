@@ -1,6 +1,5 @@
 extern crate cargo_local_serve;
 extern crate flate2;
-extern crate ring;
 extern crate tar;
 extern crate pbr;
 
@@ -9,8 +8,8 @@ use std::io;
 use std::env;
 use std::path::Path;
 use cargo_local_serve::registry::registry;
+use cargo_local_serve::hash_ctx::HashCtx;
 use self::registry::{Registry, AllCratesJson};
-use ring::digest::{Context, SHA256};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
 use tar::Archive;
@@ -20,29 +19,6 @@ use std::sync::mpsc::{sync_channel, SyncSender};
 use std::collections::HashMap;
 
 use pbr::MultiBar;
-
-struct HashCtx(Context);
-
-impl io::Write for HashCtx {
-	fn write(&mut self, data: &[u8]) -> Result<usize, io::Error> {
-		self.0.update(data);
-		Ok(data.len())
-	}
-	fn flush(&mut self) -> Result<(), io::Error> {
-		Ok(())
-	}
-}
-
-impl HashCtx {
-	fn finish_and_get_digest_hex(self) -> String {
-		let digest = self.0.finish();
-		let mut hash_str = String::with_capacity(60);
-		for d in digest.as_ref().iter() {
-			hash_str += &format!("{:02x}", d);
-		}
-		hash_str
-	}
-}
 
 // corrupt deflate stream error blacklist
 // TODO: does having it make any sense?
@@ -115,7 +91,7 @@ fn run(tx :SyncSender<Message>, acj :&AllCratesJson,
 			match File::open(&crate_file_path) {
 				Ok(mut f) => {
 					// verify the checksum
-					let mut ring_ctx = HashCtx(Context::new(&SHA256));
+					let mut ring_ctx = HashCtx::init_sha256();
 					io::copy(&mut f, &mut ring_ctx).unwrap();
 					let hash_str = ring_ctx.finish_and_get_digest_hex();
 					if hash_str == v.checksum {
@@ -156,7 +132,7 @@ fn run(tx :SyncSender<Message>, acj :&AllCratesJson,
 					Ok(_) => (),
 					Err(e) => pln!("ERROR FOR {} v{}: {:?}", name, v.version, e),
 				}
-				let mut ring_ctx = HashCtx(Context::new(&SHA256));
+				let mut ring_ctx = HashCtx::init_sha256();
 				let mut sl :&[u8] = &buffer;
 				io::copy(&mut sl, &mut ring_ctx).unwrap();
 				let hash_str = ring_ctx.finish_and_get_digest_hex();
