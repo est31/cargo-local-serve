@@ -84,7 +84,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 						// everything is fine!
 					} else {
 						pln!("Checksum mismatch for {} v{}. \
-								Deleting. expected: '{}' was: '{}'",
+								Ignoring. expected: '{}' was: '{}'",
 								name, v.version, v.checksum, hash_str);
 						// Ignore
 						continue;
