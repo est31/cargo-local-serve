@@ -77,7 +77,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 			match File::open(&crate_file_path) {
 				Ok(mut f) => {
 					// verify the checksum
-					let mut ring_ctx = HashCtx::init_sha256();
+					let mut ring_ctx = HashCtx::new();
 					io::copy(&mut f, &mut ring_ctx).unwrap();
 					let hash_str = ring_ctx.finish_and_get_digest_hex();
 					if hash_str == v.checksum {
@@ -117,7 +117,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 			/*let mut f = File::create(&crate_file_c_path).unwrap();
 			io::copy(&mut gz_enc, &mut f).unwrap();*/
 
-			let mut ring_ctx = HashCtx::init_sha256();
+			let mut ring_ctx = HashCtx::new();
 			match io::copy(&mut gz_enc, &mut ring_ctx) {
 				Ok(_) => (),
 				Err(e) => pln!("ERROR FOR {} v{}: {:?}", name, v.version, e),

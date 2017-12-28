@@ -2,8 +2,7 @@
 use std::io::{Read, Write, Result as IoResult};
 use std::collections::HashMap;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
-
-type Digest = [u8; 32];
+use super::hash_ctx::Digest;
 
 pub struct BlobStorage {
 	/// Index that maps (crate) names to digests
