@@ -36,18 +36,18 @@ struct ArchiveBlob {
 	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
 }
 
-fn gen_archive_blob<R :io::Read>(mut archive :Archive<R>) -> ArchiveBlob {
+fn gen_archive_blob<R :io::Read>(mut archive :Archive<R>) -> io::Result<ArchiveBlob> {
 	let mut entries = Vec::new();
 	for entry in archive.entries().unwrap().raw(true) {
-		let mut entry = entry.unwrap();
+		let mut entry = try!(entry);
 		let hdr_box = Box::new(entry.header().as_bytes().clone());
 		let mut content = Vec::new();
 		std::io::copy(&mut entry, &mut content).unwrap();
 		entries.push((hdr_box, content));
 	}
-	ArchiveBlob {
+	Ok(ArchiveBlob {
 		entries,
-	}
+	})
 }
 
 impl ArchiveBlob {
@@ -142,7 +142,13 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				.filename().map(|v| v.to_vec());
 			let os = gz_dec.header().unwrap().operating_system();
 			//pln!("{:?}", gz_dec.header());
-			let archive_blob = gen_archive_blob(Archive::new(gz_dec));
+			let archive_blob = match gen_archive_blob(Archive::new(gz_dec)) {
+				Ok(b) => b,
+				Err(e) => {
+					pln!("ERROR FOR {} v{}: {:?}", name, v.version, e);
+					continue;
+				},
+			};
 			let archive_file = archive_blob.to_archive_file();
 			let archive_rdr :&[u8] = &archive_file;
 			let gz_bld = GzBuilder::new()
