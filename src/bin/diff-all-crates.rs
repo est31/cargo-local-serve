@@ -1,17 +1,16 @@
 extern crate cargo_local_serve;
 extern crate flate2;
-extern crate tar;
 
 use std::fs::{self, File};
 use std::io;
 use std::env;
 use std::path::Path;
 use cargo_local_serve::registry::registry;
+use cargo_local_serve::reconstruction::{CrateContentBlobs};
 use cargo_local_serve::hash_ctx::HashCtx;
 use self::registry::{Registry, AllCratesJson};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
-use tar::{Archive, Header, Builder as TarBuilder};
 
 use std::thread;
 use std::sync::mpsc::{sync_channel, SyncSender};
@@ -31,41 +30,6 @@ const BLACKLIST :&[&str] = &[
 	"rustc-serialize", // v0.3.8
 	*/
 ];
-
-struct ArchiveBlob {
-	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
-}
-
-fn gen_archive_blob<R :io::Read>(mut archive :Archive<R>) -> io::Result<ArchiveBlob> {
-	let mut entries = Vec::new();
-	for entry in archive.entries().unwrap().raw(true) {
-		let mut entry = try!(entry);
-		let hdr_box = Box::new(entry.header().as_bytes().clone());
-		let mut content = Vec::new();
-		try!(std::io::copy(&mut entry, &mut content));
-		entries.push((hdr_box, content));
-	}
-	Ok(ArchiveBlob {
-		entries,
-	})
-}
-
-impl ArchiveBlob {
-	fn to_archive_file(self) -> Vec<u8> {
-		let mut res = Vec::new();
-		{
-			let mut bld = TarBuilder::new(&mut res);
-			for entry in self.entries {
-				let hdr :&Header = unsafe {
-					std::mem::transmute(entry.0)
-				};
-				let content_sl :&[u8] = &entry.1;
-				bld.append(&hdr, content_sl).unwrap();
-			}
-		}
-		res
-	}
-}
 
 /*
 
@@ -142,14 +106,14 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				.filename().map(|v| v.to_vec());
 			let os = gz_dec.header().unwrap().operating_system();
 			//pln!("{:?}", gz_dec.header());
-			let archive_blob = match gen_archive_blob(Archive::new(gz_dec)) {
+			let archive_blobs = match CrateContentBlobs::from_archive_file(gz_dec) {
 				Ok(b) => b,
 				Err(e) => {
 					pln!("ERROR FOR {} v{}: {:?}", name, v.version, e);
 					continue;
 				},
 			};
-			let archive_file = archive_blob.to_archive_file();
+			let archive_file = archive_blobs.to_archive_file();
 			let archive_rdr :&[u8] = &archive_file;
 			let gz_bld = GzBuilder::new()
 				.operating_system(os);
