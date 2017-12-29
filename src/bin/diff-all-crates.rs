@@ -42,7 +42,7 @@ fn gen_archive_blob<R :io::Read>(mut archive :Archive<R>) -> io::Result<ArchiveB
 		let mut entry = try!(entry);
 		let hdr_box = Box::new(entry.header().as_bytes().clone());
 		let mut content = Vec::new();
-		std::io::copy(&mut entry, &mut content).unwrap();
+		try!(std::io::copy(&mut entry, &mut content));
 		entries.push((hdr_box, content));
 	}
 	Ok(ArchiveBlob {
