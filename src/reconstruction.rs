@@ -7,17 +7,25 @@ we need to be able to reconstruct the exact sha-256-hash matching .crate
 files.
 */
 
+use flate2::{Compression, GzBuilder};
+use flate2::read::GzDecoder;
 use tar::{Archive, Header, Builder as TarBuilder};
 use std::mem;
 use std::io;
 
 pub struct CrateContentBlobs {
+	gz_file_name :Option<Vec<u8>>,
+	gz_os :u8,
 	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
 }
 
 impl CrateContentBlobs {
 	pub fn from_archive_file<R :io::Read>(archive_rdr :R) -> io::Result<Self> {
-		let mut archive = Archive::new(archive_rdr);
+		let gz_dec = GzDecoder::new(archive_rdr);
+		let gz_file_name = gz_dec.header().unwrap()
+			.filename().map(|v| v.to_vec());
+		let gz_os = gz_dec.header().unwrap().operating_system();
+		let mut archive = Archive::new(gz_dec);
 		let mut entries = Vec::new();
 		for entry in archive.entries().unwrap().raw(true) {
 			let mut entry = try!(entry);
@@ -27,13 +35,23 @@ impl CrateContentBlobs {
 			entries.push((hdr_box, content));
 		}
 		Ok(CrateContentBlobs {
+			gz_file_name,
+			gz_os,
 			entries,
 		})
 	}
 	pub fn to_archive_file(self) -> Vec<u8> {
 		let mut res = Vec::new();
+		let gz_bld = GzBuilder::new()
+			.operating_system(self.gz_os);
+		let gz_bld = if let Some(filen) = self.gz_file_name {
+			gz_bld.filename(filen)
+		} else {
+			gz_bld
+		};
 		{
-			let mut bld = TarBuilder::new(&mut res);
+			let mut gz_enc = gz_bld.write(&mut res, Compression::best());
+			let mut bld = TarBuilder::new(&mut gz_enc);
 			for entry in self.entries {
 				let hdr :&Header = unsafe {
 					mem::transmute(entry.0)

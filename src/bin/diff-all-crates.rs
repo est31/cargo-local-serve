@@ -1,5 +1,4 @@
 extern crate cargo_local_serve;
-extern crate flate2;
 
 use std::fs::{self, File};
 use std::io;
@@ -9,8 +8,6 @@ use cargo_local_serve::registry::registry;
 use cargo_local_serve::reconstruction::{CrateContentBlobs};
 use cargo_local_serve::hash_ctx::HashCtx;
 use self::registry::{Registry, AllCratesJson};
-use flate2::{Compression, GzBuilder};
-use flate2::read::GzDecoder;
 
 use std::thread;
 use std::sync::mpsc::{sync_channel, SyncSender};
@@ -101,12 +98,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 
 			// Do the diffing.
 			let f = File::open(&crate_file_path).unwrap();
-			let gz_dec = GzDecoder::new(f);
-			let file_name = gz_dec.header().unwrap()
-				.filename().map(|v| v.to_vec());
-			let os = gz_dec.header().unwrap().operating_system();
-			//pln!("{:?}", gz_dec.header());
-			let archive_blobs = match CrateContentBlobs::from_archive_file(gz_dec) {
+			let archive_blobs = match CrateContentBlobs::from_archive_file(f) {
 				Ok(b) => b,
 				Err(e) => {
 					pln!("ERROR FOR {} v{}: {:?}", name, v.version, e);
@@ -114,21 +106,13 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				},
 			};
 			let archive_file = archive_blobs.to_archive_file();
-			let archive_rdr :&[u8] = &archive_file;
-			let gz_bld = GzBuilder::new()
-				.operating_system(os);
-			let gz_bld = if let Some(filen) = file_name {
-				gz_bld.filename(filen)
-			} else {
-				gz_bld
-			};
-			let mut gz_enc = gz_bld.read(archive_rdr, Compression::best());
 
 			/*let mut f = File::create(&crate_file_c_path).unwrap();
-			io::copy(&mut gz_enc, &mut f).unwrap();*/
+			io::copy(&mut archive_file, &mut f).unwrap();*/
 
 			let mut ring_ctx = HashCtx::new();
-			match io::copy(&mut gz_enc, &mut ring_ctx) {
+			let mut reconstructed_rdr :&[u8] = &archive_file;
+			match io::copy(&mut reconstructed_rdr, &mut ring_ctx) {
 				Ok(_) => (),
 				Err(e) => pln!("ERROR FOR {} v{}: {:?}", name, v.version, e),
 			}

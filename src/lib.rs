@@ -10,6 +10,7 @@ extern crate string_interner;
 extern crate git2;
 extern crate byteorder;
 extern crate ring;
+extern crate flate2;
 extern crate tar;
 
 pub mod registry;
