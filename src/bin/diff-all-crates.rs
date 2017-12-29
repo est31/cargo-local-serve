@@ -1,5 +1,6 @@
 extern crate cargo_local_serve;
 extern crate flate2;
+extern crate tar;
 
 use std::fs::{self, File};
 use std::io;
@@ -10,6 +11,7 @@ use cargo_local_serve::hash_ctx::HashCtx;
 use self::registry::{Registry, AllCratesJson};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
+use tar::{Archive, Header, Builder as TarBuilder};
 
 use std::thread;
 use std::sync::mpsc::{sync_channel, SyncSender};
@@ -29,6 +31,41 @@ const BLACKLIST :&[&str] = &[
 	"rustc-serialize", // v0.3.8
 	*/
 ];
+
+struct ArchiveBlob {
+	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
+}
+
+fn gen_archive_blob<R :io::Read>(mut archive :Archive<R>) -> ArchiveBlob {
+	let mut entries = Vec::new();
+	for entry in archive.entries().unwrap().raw(true) {
+		let mut entry = entry.unwrap();
+		let hdr_box = Box::new(entry.header().as_bytes().clone());
+		let mut content = Vec::new();
+		std::io::copy(&mut entry, &mut content).unwrap();
+		entries.push((hdr_box, content));
+	}
+	ArchiveBlob {
+		entries,
+	}
+}
+
+impl ArchiveBlob {
+	fn to_archive_file(self) -> Vec<u8> {
+		let mut res = Vec::new();
+		{
+			let mut bld = TarBuilder::new(&mut res);
+			for entry in self.entries {
+				let hdr :&Header = unsafe {
+					std::mem::transmute(entry.0)
+				};
+				let content_sl :&[u8] = &entry.1;
+				bld.append(&hdr, content_sl).unwrap();
+			}
+		}
+		res
+	}
+}
 
 /*
 
@@ -105,6 +142,9 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				.filename().map(|v| v.to_vec());
 			let os = gz_dec.header().unwrap().operating_system();
 			//pln!("{:?}", gz_dec.header());
+			let archive_blob = gen_archive_blob(Archive::new(gz_dec));
+			let archive_file = archive_blob.to_archive_file();
+			let archive_rdr :&[u8] = &archive_file;
 			let gz_bld = GzBuilder::new()
 				.operating_system(os);
 			let gz_bld = if let Some(filen) = file_name {
@@ -112,7 +152,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 			} else {
 				gz_bld
 			};
-			let mut gz_enc = gz_bld.read(gz_dec, Compression::best());
+			let mut gz_enc = gz_bld.read(archive_rdr, Compression::best());
 
 			/*let mut f = File::create(&crate_file_c_path).unwrap();
 			io::copy(&mut gz_enc, &mut f).unwrap();*/
