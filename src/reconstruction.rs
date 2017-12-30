@@ -68,9 +68,9 @@ impl CrateContentBlobs {
 			let mut gz_enc = gz_bld.write(&mut res, Compression::best());
 			let mut bld = TarBuilder::new(&mut gz_enc);
 			for entry in &self.entries {
-				let content_sl :&[u8; 512] = &entry.0;
+				let hdr_buf = entry.0.clone();
 				let hdr :&Header = unsafe {
-					mem::transmute(&content_sl)
+					mem::transmute(hdr_buf)
 				};
 				let content_sl :&[u8] = &entry.1;
 				bld.append(&hdr, content_sl).unwrap();
