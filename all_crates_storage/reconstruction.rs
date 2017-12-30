@@ -15,14 +15,14 @@ use std::mem;
 use std::io;
 
 pub(crate) struct CrateRecMetadata {
-	gz_file_name :Option<Vec<u8>>,
-	gz_os :u8,
-	entry_metadata :Vec<(Box<[u8; 512]>, Digest)>,
+	pub(crate) gz_file_name :Option<Vec<u8>>,
+	pub(crate) gz_os :u8,
+	pub(crate) entry_metadata :Vec<(Box<[u8; 512]>, Digest)>,
 }
 
 pub(crate) struct CrateRecMetaWithBlobs {
-	meta :CrateRecMetadata,
-	blobs :Vec<(Digest, Vec<u8>)>,
+	pub(crate) meta :CrateRecMetadata,
+	pub(crate) blobs :Vec<(Digest, Vec<u8>)>,
 }
 
 pub struct CrateContentBlobs {
