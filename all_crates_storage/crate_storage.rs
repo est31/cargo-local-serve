@@ -1,6 +1,6 @@
 
 use super::blob_storage::BlobStorage;
-use super::hash_ctx::Digest;
+use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetadata, CrateRecMetaWithBlobs};
 use flate2::{Compression, GzBuilder};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
@@ -90,11 +90,26 @@ fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store 
 					emit_task(ParallelTask::CompressBlob(entry_digest, entry.1));
 				}
 			}
-			// TODO emit a blob for meta as well
+			// emit a blob for meta as well
+			let mut meta_blob = Vec::new();
+			meta.serialize(&mut meta_blob).unwrap();
+			let mut meta_blob_hctx = HashCtx::new();
+			io::copy(&mut meta_blob.as_slice(), &mut meta_blob_hctx).unwrap();
+			let meta_blob_digest = meta_blob_hctx.finish_and_get_digest();
+			// The blob digest may be already present, e.g. if
+			// we had been writing this particular crate into the
+			// BlobStorage previously. In order to be on the safe
+			// side, check for existence before inserting into
+			// the blob storage.
+			if blob_store.blobs.get(&meta_blob_digest).is_none() {
+				emit_task(ParallelTask::CompressBlob(meta_blob_digest, meta_blob));
+			}
+			// enter the meta blob into the blob storage
+			blob_store.index.insert(crate_file_name, meta_blob_digest);
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
-			// TODO
+			blob_store.blobs.insert(d, blob);
 		},
 	}
 }
