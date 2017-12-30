@@ -11,7 +11,9 @@ use super::hash_ctx::{Digest, HashCtx};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
 use tar::{Archive, Header, Builder as TarBuilder};
+use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use std::mem;
+use std::u64;
 use std::io;
 
 pub(crate) struct CrateRecMetadata {
@@ -107,5 +109,52 @@ impl CrateContentBlobs {
 			},
 			blobs,
 		}
+	}
+}
+
+impl CrateRecMetadata {
+	pub fn deserialize<R :io::Read>(mut rdr :R) -> io::Result<CrateRecMetadata> {
+		let gz_file_name_len = try!(rdr.read_u64::<BigEndian>());
+		let gz_file_name = if gz_file_name_len == u64::MAX {
+			None
+		} else {
+			let mut gfn = vec![0; gz_file_name_len as usize];
+			try!(rdr.read_exact(&mut gfn));
+			Some(gfn)
+		};
+		let gz_os = try!(rdr.read_u8());
+		let entry_count = try!(rdr.read_u64::<BigEndian>()) as usize;
+		let mut entry_metadata = Vec::with_capacity(entry_count);
+		for _ in 0 .. entry_count {
+			let mut hdr = Box::new([0; 512]);
+			{
+				let hdr_ref :&mut [u8; 512] = &mut hdr;
+				try!(rdr.read_exact(hdr_ref));
+			}
+			let mut digest = [0; 32];
+			try!(rdr.read_exact(&mut digest));
+			entry_metadata.push((hdr, digest));
+		}
+		Ok(CrateRecMetadata {
+			gz_file_name,
+			gz_os,
+			entry_metadata,
+		})
+	}
+	pub fn serialize<W :io::Write>(&self, mut wtr :W) -> io::Result<()> {
+		if let Some(ref name) = self.gz_file_name {
+			try!(wtr.write_u64::<BigEndian>(name.len() as u64));
+			try!(wtr.write(&name));
+		} else {
+			try!(wtr.write_u64::<BigEndian>(u64::MAX));
+		}
+		try!(wtr.write_u8(self.gz_os));
+		try!(wtr.write_u64::<BigEndian>(self.entry_metadata.len() as u64));
+		for entry in self.entry_metadata.iter() {
+			let hdr_ref :&[u8; 512] = &entry.0;
+			try!(wtr.write(hdr_ref));
+			try!(wtr.write(&entry.1));
+		}
+		Ok(())
 	}
 }

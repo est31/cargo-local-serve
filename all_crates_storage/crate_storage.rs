@@ -5,7 +5,6 @@ use super::reconstruction::{CrateContentBlobs, CrateRecMetadata, CrateRecMetaWit
 use flate2::{Compression, GzBuilder};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use std::io;
-use std::u64;
 
 pub struct CrateStorage {
 	b :BlobStorage,
