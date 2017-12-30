@@ -1,4 +1,4 @@
-extern crate cargo_local_serve;
+extern crate all_crates_storage;
 extern crate reqwest;
 extern crate ring;
 
@@ -6,7 +6,7 @@ use std::fs::{self, File};
 use std::io;
 use std::env;
 use reqwest::Client;
-use cargo_local_serve::registry::registry;
+use all_crates_storage::registry::registry;
 use self::registry::{Registry, AllCratesJson};
 use ring::digest::{Context, SHA256};
 

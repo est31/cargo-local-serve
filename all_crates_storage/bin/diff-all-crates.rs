@@ -1,12 +1,12 @@
-extern crate cargo_local_serve;
+extern crate all_crates_storage;
 
 use std::fs::{self, File};
 use std::io;
 use std::env;
 use std::path::Path;
-use cargo_local_serve::registry::registry;
-use cargo_local_serve::reconstruction::{CrateContentBlobs};
-use cargo_local_serve::hash_ctx::{HashCtx, get_digest_hex};
+use all_crates_storage::registry::registry;
+use all_crates_storage::reconstruction::{CrateContentBlobs};
+use all_crates_storage::hash_ctx::{HashCtx, get_digest_hex};
 use self::registry::{Registry, AllCratesJson};
 
 use std::thread;

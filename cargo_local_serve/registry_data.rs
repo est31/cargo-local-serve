@@ -8,8 +8,8 @@ use semver::Version as SvVersion;
 use semver::VersionReq;
 use urlencoded::QueryMap;
 
-use cargo_local_serve::registry::registry::{Dependency, Registry, DependencyKind};
-use cargo_local_serve::registry::statistics::CrateStats;
+use all_crates_storage::registry::registry::{Dependency, Registry, DependencyKind};
+use all_crates_storage::registry::statistics::CrateStats;
 use super::markdown_render::render_markdown;
 
 #[derive(Serialize, Debug)]

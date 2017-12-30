@@ -22,7 +22,7 @@ extern crate lazy_static;
 extern crate string_interner;
 extern crate failure;
 
-extern crate cargo_local_serve;
+extern crate all_crates_storage;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -45,8 +45,8 @@ use mount::Mount;
 
 use urlencoded::UrlEncodedQuery;
 
-use cargo_local_serve::registry::registry::Registry;
-use cargo_local_serve::registry::statistics::{compute_crate_statistics, CrateStats};
+use all_crates_storage::registry::registry::Registry;
+use all_crates_storage::registry::statistics::{compute_crate_statistics, CrateStats};
 
 mod registry_data;
 mod markdown_render;
