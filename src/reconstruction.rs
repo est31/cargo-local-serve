@@ -7,6 +7,7 @@ we need to be able to reconstruct the exact sha-256-hash matching .crate
 files.
 */
 
+use super::hash_ctx::{Digest, HashCtx};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
 use tar::{Archive, Header, Builder as TarBuilder};
@@ -20,6 +21,7 @@ pub struct CrateContentBlobs {
 }
 
 impl CrateContentBlobs {
+	/// Creates the CrateContentBlobs structure from a given .crate file
 	pub fn from_archive_file<R :io::Read>(archive_rdr :R) -> io::Result<Self> {
 		let gz_dec = GzDecoder::new(archive_rdr);
 		let gz_file_name = gz_dec.header().unwrap()
@@ -40,11 +42,13 @@ impl CrateContentBlobs {
 			entries,
 		})
 	}
-	pub fn to_archive_file(self) -> Vec<u8> {
+
+	/// Reconstructs the .crate file from the CrateContentBlobs structure
+	pub fn to_archive_file(&self) -> Vec<u8> {
 		let mut res = Vec::new();
 		let gz_bld = GzBuilder::new()
 			.operating_system(self.gz_os);
-		let gz_bld = if let Some(filen) = self.gz_file_name {
+		let gz_bld = if let Some(filen) = self.gz_file_name.clone() {
 			gz_bld.filename(filen)
 		} else {
 			gz_bld
@@ -52,14 +56,24 @@ impl CrateContentBlobs {
 		{
 			let mut gz_enc = gz_bld.write(&mut res, Compression::best());
 			let mut bld = TarBuilder::new(&mut gz_enc);
-			for entry in self.entries {
+			for entry in &self.entries {
+				let content_sl :&[u8; 512] = &entry.0;
 				let hdr :&Header = unsafe {
-					mem::transmute(entry.0)
+					mem::transmute(&content_sl)
 				};
 				let content_sl :&[u8] = &entry.1;
 				bld.append(&hdr, content_sl).unwrap();
 			}
 		}
 		res
+	}
+
+	/// Reconstructs the .crate file and obtains its digest
+	pub fn digest_of_reconstructed(&self) -> Digest {
+		let mut hash_ctx = HashCtx::new();
+		let reconstructed = self.to_archive_file();
+		let mut reconstructed_rdr :&[u8] = &reconstructed;
+		io::copy(&mut reconstructed_rdr, &mut hash_ctx).unwrap();
+		hash_ctx.finish_and_get_digest()
 	}
 }

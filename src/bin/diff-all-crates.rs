@@ -6,7 +6,7 @@ use std::env;
 use std::path::Path;
 use cargo_local_serve::registry::registry;
 use cargo_local_serve::reconstruction::{CrateContentBlobs};
-use cargo_local_serve::hash_ctx::HashCtx;
+use cargo_local_serve::hash_ctx::{HashCtx, get_digest_hex};
 use self::registry::{Registry, AllCratesJson};
 
 use std::thread;
@@ -98,6 +98,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 
 			// Do the diffing.
 			let f = File::open(&crate_file_path).unwrap();
+			// Create the blobs
 			let archive_blobs = match CrateContentBlobs::from_archive_file(f) {
 				Ok(b) => b,
 				Err(e) => {
@@ -105,18 +106,12 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 					continue;
 				},
 			};
-			let archive_file = archive_blobs.to_archive_file();
 
-			/*let mut f = File::create(&crate_file_c_path).unwrap();
-			io::copy(&mut archive_file, &mut f).unwrap();*/
+			// Reconstruct the file and compute the digest
+			let digest_reconstructed = archive_blobs.digest_of_reconstructed();
 
-			let mut ring_ctx = HashCtx::new();
-			let mut reconstructed_rdr :&[u8] = &archive_file;
-			match io::copy(&mut reconstructed_rdr, &mut ring_ctx) {
-				Ok(_) => (),
-				Err(e) => pln!("ERROR FOR {} v{}: {:?}", name, v.version, e),
-			}
-			let hash_str = ring_ctx.finish_and_get_digest_hex();
+			// Compare the digest
+			let hash_str = get_digest_hex(digest_reconstructed);
 			if hash_str != v.checksum {
 				pln!("DIFF FAIL for {} v{}!", name, v.version);
 			}
