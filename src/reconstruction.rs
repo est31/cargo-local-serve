@@ -14,10 +14,21 @@ use tar::{Archive, Header, Builder as TarBuilder};
 use std::mem;
 use std::io;
 
+pub(crate) struct CrateRecMetadata {
+	gz_file_name :Option<Vec<u8>>,
+	gz_os :u8,
+	entry_metadata :Vec<(Box<[u8; 512]>, Digest)>,
+}
+
+pub(crate) struct CrateRecMetaWithBlobs {
+	meta :CrateRecMetadata,
+	blobs :Vec<(Digest, Vec<u8>)>,
+}
+
 pub struct CrateContentBlobs {
 	gz_file_name :Option<Vec<u8>>,
 	gz_os :u8,
-	entries :Vec<(Box<[u8; 512]>, Digest, Vec<u8>)>,
+	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
 }
 
 impl CrateContentBlobs {
@@ -34,10 +45,7 @@ impl CrateContentBlobs {
 			let hdr_box = Box::new(entry.header().as_bytes().clone());
 			let mut content = Vec::new();
 			try!(io::copy(&mut entry, &mut content));
-			let mut hash_ctx = HashCtx::new();
-			io::copy(&mut content.as_slice(), &mut hash_ctx).unwrap();
-			let digest = hash_ctx.finish_and_get_digest();
-			entries.push((hdr_box, digest, content));
+			entries.push((hdr_box, content));
 		}
 		Ok(CrateContentBlobs {
 			gz_file_name,
@@ -78,5 +86,26 @@ impl CrateContentBlobs {
 		let mut reconstructed_rdr :&[u8] = &reconstructed;
 		io::copy(&mut reconstructed_rdr, &mut hash_ctx).unwrap();
 		hash_ctx.finish_and_get_digest()
+	}
+
+	pub(crate) fn into_meta_with_blobs(self) -> CrateRecMetaWithBlobs {
+		let mut entry_metadata = Vec::new();
+		let mut blobs = Vec::new();
+		for entry in self.entries {
+			let content = entry.1;
+			let mut hash_ctx = HashCtx::new();
+			io::copy(&mut content.as_slice(), &mut hash_ctx).unwrap();
+			let digest = hash_ctx.finish_and_get_digest();
+			entry_metadata.push((entry.0, digest));
+			blobs.push((digest, content));
+		}
+		CrateRecMetaWithBlobs {
+			meta : CrateRecMetadata {
+				gz_file_name : self.gz_file_name,
+				gz_os : self.gz_os,
+				entry_metadata,
+			},
+			blobs,
+		}
 	}
 }
