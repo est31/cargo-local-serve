@@ -2,7 +2,7 @@
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetadata, CrateRecMetaWithBlobs};
-use super::registry::registry::{AllCratesJson, obtain_crate_name_path};
+use super::registry::registry::{CrateIndexJson, AllCratesJson, obtain_crate_name_path};
 
 use flate2::{Compression, GzBuilder};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
@@ -20,12 +20,14 @@ impl CrateStorage {
 			b : BlobStorage::new(),
 		}
 	}
-	pub fn fill_crate_storage_from_disk(&mut self, thread_count :u16, acj :&AllCratesJson, storage_base :&Path) {
+	pub fn fill_crate_storage_from_disk(&mut self,
+			thread_count :u16, acj :&AllCratesJson, storage_base :&Path, progress_callback :fn(&str, &CrateIndexJson)) {
 		let crate_iter = acj.iter()
 			.flat_map(|&(ref name, ref versions)| {
 				let name_path = storage_base.join(obtain_crate_name_path(name));
 				let name = name.clone();
 				versions.iter().map(move |v| {
+					progress_callback(&name, &v);
 					let name_str = format!("{}-{}.crate", name, v.version);
 					let crate_file_path = name_path.join(&name_str);
 					let mut f = File::open(&crate_file_path).unwrap();

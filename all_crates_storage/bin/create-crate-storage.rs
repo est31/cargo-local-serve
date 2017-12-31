@@ -22,5 +22,6 @@ fn main() {
 	let thread_count = 8;
 
 	let mut cst = CrateStorage::new();
-	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base);
+	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base,
+		|n, v| println!("Storing {} v {}", n, v.version));
 }
