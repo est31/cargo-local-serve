@@ -19,6 +19,10 @@ path = "bin/diff-all-crates.rs"
 name = "download-all-crates"
 path = "bin/download-all-crates.rs"
 
+[[bin]]
+name = "create-crate-storage"
+path = "bin/create-crate-storage.rs"
+
 [dependencies]
 
 # Needed by the binaries

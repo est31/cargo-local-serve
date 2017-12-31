@@ -20,7 +20,7 @@ impl CrateStorage {
 			b : BlobStorage::new(),
 		}
 	}
-	pub fn fill_crate_storage_from_disk(&mut self, thread_count :u16, acj :AllCratesJson, storage_base :&Path) {
+	pub fn fill_crate_storage_from_disk(&mut self, thread_count :u16, acj :&AllCratesJson, storage_base :&Path) {
 		let crate_iter = acj.iter()
 			.flat_map(|&(ref name, ref versions)| {
 				let name_path = storage_base.join(obtain_crate_name_path(name));
