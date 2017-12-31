@@ -26,6 +26,6 @@ fn main() {
 	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base,
 		|n, v| println!("Storing {} v {}", n, v.version));
 
-	let mut f = File::create(storage_con_base.join("crate_storage")).unwrap();
+	let f = File::create(storage_con_base.join("crate_storage")).unwrap();
 	cst.store(f).unwrap();
 }

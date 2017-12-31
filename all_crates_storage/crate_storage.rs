@@ -74,7 +74,7 @@ impl CrateStorage {
 				done_something = true;
 			}
 			if par_task_backlog.is_empty() {
-				for i in 0 .. 10 {
+				for _ in 0 .. 10 {
 					if let Some((n, b, d)) = crate_iter.next() {
 						par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(n, b, d));
 						done_something = true;
@@ -104,7 +104,7 @@ impl CrateStorage {
 			}
 		}
 	}
-	pub fn store<W :Write>(&mut self, wtr :W) -> io::Result<()> {
+	pub fn store<W :io::Write>(&mut self, wtr :W) -> io::Result<()> {
 		self.b.write_to_file(wtr)
 	}
 }
