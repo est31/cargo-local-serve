@@ -1,10 +1,8 @@
 extern crate all_crates_storage;
 
-use std::io;
 use std::env;
-use std::path::Path;
 use all_crates_storage::registry::registry;
-use all_crates_storage::crate_storage::{self, CrateStorage};
+use all_crates_storage::crate_storage::CrateStorage;
 use self::registry::{Registry, AllCratesJson};
 
 fn main() {

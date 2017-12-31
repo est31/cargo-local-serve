@@ -1,11 +1,10 @@
 
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
-use super::reconstruction::{CrateContentBlobs, CrateRecMetadata, CrateRecMetaWithBlobs};
+use super::reconstruction::{CrateContentBlobs, CrateRecMetaWithBlobs};
 use super::registry::registry::{CrateIndexJson, AllCratesJson, obtain_crate_name_path};
 
 use flate2::{Compression, GzBuilder};
-use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use std::fs::File;
 use std::path::Path;
 use std::io;

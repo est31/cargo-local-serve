@@ -1,6 +1,6 @@
 extern crate all_crates_storage;
 
-use std::fs::{self, File};
+use std::fs::File;
 use std::io;
 use std::env;
 use std::path::Path;
@@ -41,7 +41,7 @@ Diffoscope output:
 */
 fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 		total_file_count :usize, t :usize, tc :usize,
-		storage_base :&Path, storage_con_base :&Path) {
+		storage_base :&Path) {
 	let mut ctr = 0;
 
 	macro_rules! pln {
@@ -52,8 +52,6 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 
 	for &(ref name, ref versions) in acj.iter() {
 		let name_path = storage_base.join(registry::obtain_crate_name_path(name));
-		let name_c_path = storage_con_base.join(registry::obtain_crate_name_path(name));
-		//fs::create_dir_all(&name_c_path).unwrap();
 
 		if BLACKLIST.contains(&&name[..]) {
 			ctr += versions.len();
@@ -69,8 +67,6 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				continue;
 			}
 			let crate_file_path = name_path
-				.join(format!("{}-{}.crate", name, v.version));
-			let crate_file_c_path = name_c_path
 				.join(format!("{}-{}.crate", name, v.version));
 			match File::open(&crate_file_path) {
 				Ok(mut f) => {
@@ -132,7 +128,6 @@ fn main() {
 
 	println!("The target is {} files.", total_file_count);
 	let storage_base = env::current_dir().unwrap().join("crate-archives");
-	let storage_con_base = env::current_dir().unwrap().join("crate-constr-archives");
 	println!("Using directory {} to load the files from.",
 		storage_base.to_str().unwrap());
 
@@ -143,10 +138,9 @@ fn main() {
 		let tx = tx.clone();
 		let acj = acj.clone();
 		let storage_base = storage_base.clone();
-		let storage_con_base = storage_con_base.clone();
 		thread::spawn(move || {
 			run(tx, &acj, total_file_count, v, thread_count,
-				&storage_base, &storage_con_base);
+				&storage_base);
 		});
 	}
 	while let Ok((ctr, tc, s)) = rx.recv() {
