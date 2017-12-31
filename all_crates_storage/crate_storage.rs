@@ -68,7 +68,7 @@ impl CrateStorage {
 					break;
 				}
 			}
-			if !done_something {
+			if !done_something && par_task_backlog.is_empty() {
 				break;
 			}
 		}
