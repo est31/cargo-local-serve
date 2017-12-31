@@ -1,5 +1,6 @@
 extern crate all_crates_storage;
 
+use std::fs::{self, File};
 use std::env;
 use all_crates_storage::registry::registry;
 use all_crates_storage::crate_storage::CrateStorage;
@@ -17,9 +18,14 @@ fn main() {
 	println!("Using directory {} to load the files from.",
 		storage_base.to_str().unwrap());
 
+	fs::create_dir_all(&storage_con_base).unwrap();
+
 	let thread_count = 8;
 
 	let mut cst = CrateStorage::new();
 	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base,
 		|n, v| println!("Storing {} v {}", n, v.version));
+
+	let mut f = File::create(storage_con_base.join("crate_storage")).unwrap();
+	cst.store(f).unwrap();
 }

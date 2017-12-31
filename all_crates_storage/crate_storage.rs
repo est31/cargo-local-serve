@@ -102,6 +102,9 @@ impl CrateStorage {
 			}
 		}
 	}
+	pub fn store<W :Write>(&mut self, wtr :W) -> io::Result<()> {
+		self.b.write_to_file(wtr)
+	}
 }
 
 
