@@ -142,8 +142,7 @@ fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_ta
 			};
 		},
 		ParallelTask::CompressBlob(d, blob) => {
-			let mut blob_rdr :&[u8] = &blob;
-			let mut gz_enc = GzBuilder::new().read(blob_rdr, Compression::best());
+			let mut gz_enc = GzBuilder::new().read(blob.as_slice(), Compression::best());
 			let mut buffer_compressed = Vec::new();
 			io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
 

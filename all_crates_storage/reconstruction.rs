@@ -85,8 +85,7 @@ impl CrateContentBlobs {
 	pub fn digest_of_reconstructed(&self) -> Digest {
 		let mut hash_ctx = HashCtx::new();
 		let reconstructed = self.to_archive_file();
-		let mut reconstructed_rdr :&[u8] = &reconstructed;
-		io::copy(&mut reconstructed_rdr, &mut hash_ctx).unwrap();
+		io::copy(&mut reconstructed.as_slice(), &mut hash_ctx).unwrap();
 		hash_ctx.finish_and_get_digest()
 	}
 
