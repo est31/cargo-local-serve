@@ -16,24 +16,65 @@ impl CrateStorage {
 			b : BlobStorage::new(),
 		}
 	}
-	pub fn add_crate(&mut self, crate_file_name :String, crate_data :Vec<u8>,
-			hash :Digest) {
-		// TODO
-		// 1. obtain crate file headers and
-		// 2. test restorability of .crate file
-		// 3. if not restorable, store .crate directly. done!
-		// 4. if restorable, obtain the list of unstored blobs (crate file headers are a blob)
-		// 5. compress each unstored blob
-		// 6. add all unstored blobs to the blob storage
-		// Steps 1,2,5 are the computationally expensive ones and
-		// can be executed independently, in a separate thread.
-		// Steps 3,4,6 require access to the blob storage,
-		// but they are not computationally expensive.
-		//
-		// Later optimisations:
-		// * pass that computes the diff between similar blobs, trying whether that's smaller.
+	pub fn fill_crate_storage<I :Iterator<Item = (String, Vec<u8>, Digest)>>(
+			&mut self, thread_count :u16, mut crate_iter :I) {
+		use std::sync::mpsc::{sync_channel, TrySendError};
+		use multiqueue::mpmc_queue;
+		use std::time::Duration;
+		use std::thread;
+
+		let (bt_tx, bt_rx) = sync_channel(10);
+		let (pt_tx, pt_rx) = mpmc_queue(10);
+		for tid in 0 .. thread_count {
+			let bt_tx = bt_tx.clone();
+			let pt_rx = pt_rx.clone();
+			thread::spawn(move || {
+				while let Ok(task) = pt_rx.recv() {
+					handle_parallel_task(task, |bt| bt_tx.send((tid, bt)).unwrap());
+				}
+			});
+		}
+		drop(bt_tx);
+		pt_rx.unsubscribe();
+		let mut par_task_backlog = Vec::new();
+		loop {
+			let mut done_something = false;
+			if par_task_backlog.is_empty() {
+				if let Some((n, b, d)) = crate_iter.next() {
+					par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(n, b, d));
+					done_something = true;
+				}
+			}
+			if let Ok((tid, task)) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
+				handle_blocking_task(task, &mut self.b,
+					|tsk| par_task_backlog.push(tsk));
+				done_something = true;
+			}
+			loop {
+				let mut removed_something = false;
+				if let Some(t) = par_task_backlog.pop() {
+					if let Err(e) = pt_tx.try_send(t) {
+						let t = match e {
+							TrySendError::Full(t) => t,
+							TrySendError::Disconnected(t) => t,
+						};
+						par_task_backlog.push(t);
+					} else {
+						removed_something = true;
+						done_something = true;
+					}
+				}
+				if !removed_something {
+					break;
+				}
+			}
+			if !done_something {
+				break;
+			}
+		}
 	}
 }
+
 
 /// Tasks that can be executed in parallel
 enum ParallelTask {

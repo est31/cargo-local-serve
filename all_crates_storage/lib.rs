@@ -12,6 +12,7 @@ extern crate byteorder;
 extern crate ring;
 extern crate flate2;
 extern crate tar;
+extern crate multiqueue;
 
 pub mod registry;
 pub mod blob_storage;
