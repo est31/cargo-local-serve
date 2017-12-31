@@ -9,13 +9,13 @@ use std::fs::File;
 use std::path::Path;
 use std::io;
 
-pub struct CrateStorage {
+pub struct BlobCrateStorage {
 	b :BlobStorage,
 }
 
-impl CrateStorage {
-	pub fn new() -> CrateStorage {
-		CrateStorage {
+impl BlobCrateStorage {
+	pub fn new() -> BlobCrateStorage {
+		BlobCrateStorage {
 			b : BlobStorage::new(),
 		}
 	}

@@ -16,6 +16,6 @@ extern crate multiqueue;
 
 pub mod registry;
 pub mod blob_storage;
-pub mod crate_storage;
+pub mod blob_crate_storage;
 pub mod hash_ctx;
 pub mod reconstruction;

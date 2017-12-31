@@ -3,7 +3,7 @@ extern crate all_crates_storage;
 use std::fs::{self, File};
 use std::env;
 use all_crates_storage::registry::registry;
-use all_crates_storage::crate_storage::CrateStorage;
+use all_crates_storage::blob_crate_storage::BlobCrateStorage;
 use self::registry::{Registry, AllCratesJson};
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
 
 	let thread_count = 8;
 
-	let mut cst = CrateStorage::new();
+	let mut cst = BlobCrateStorage::new();
 	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base,
 		|n, v| println!("Storing {} v {}", n, v.version));
 
