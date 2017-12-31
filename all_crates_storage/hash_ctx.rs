@@ -1,14 +1,20 @@
+use base64;
 use ring::digest::{Context, SHA256};
 use std::io;
 
 pub type Digest = [u8; 32];
 
 pub fn get_digest_hex(digest :Digest) -> String {
-	let mut hash_str = String::with_capacity(60);
-	for d in digest.iter() {
-		hash_str += &format!("{:02x}", d);
+	base64::encode(&digest)
+}
+
+pub fn digest_from_hex(digest :&str) -> Option<Digest> {
+	let mut res = [0; 32];
+
+	match base64::decode_config_slice(digest, base64::STANDARD, &mut res) {
+		Ok(n) if n == 32 => Some(res),
+		_ => None,
 	}
-	hash_str
 }
 
 /// SHA-256 hash context that impls Write
