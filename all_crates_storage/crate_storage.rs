@@ -68,16 +68,18 @@ impl CrateStorage {
 		let mut par_task_backlog = Vec::new();
 		loop {
 			let mut done_something = false;
-			if par_task_backlog.is_empty() {
-				if let Some((n, b, d)) = crate_iter.next() {
-					par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(n, b, d));
-					done_something = true;
-				}
-			}
 			if let Ok((tid, task)) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
 				handle_blocking_task(task, &mut self.b,
 					|tsk| par_task_backlog.push(tsk));
 				done_something = true;
+			}
+			if par_task_backlog.is_empty() {
+				for i in 0 .. 10 {
+					if let Some((n, b, d)) = crate_iter.next() {
+						par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(n, b, d));
+						done_something = true;
+					}
+				}
 			}
 			loop {
 				let mut removed_something = false;
