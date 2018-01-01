@@ -13,7 +13,7 @@ extern crate ring;
 extern crate flate2;
 extern crate tar;
 extern crate multiqueue;
-extern crate base64;
+extern crate hex;
 
 pub mod registry;
 pub mod crate_storage;

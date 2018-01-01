@@ -1,19 +1,21 @@
-use base64;
+use hex;
 use ring::digest::{Context, SHA256};
 use std::io;
 
 pub type Digest = [u8; 32];
 
 pub fn get_digest_hex(digest :Digest) -> String {
-	base64::encode(&digest)
+	hex::encode(&digest)
 }
 
 pub fn digest_from_hex(digest :&str) -> Option<Digest> {
-	let mut res = [0; 32];
-
-	match base64::decode_config_slice(digest, base64::STANDARD, &mut res) {
-		Ok(n) if n == 32 => Some(res),
-		_ => None,
+	match hex::decode(&digest) {
+		Ok(v) => {
+			let mut res = [0; 32];
+			res.copy_from_slice(&v[..32]);
+			Some(res)
+		},
+		Err(_) => None,
 	}
 }
 
