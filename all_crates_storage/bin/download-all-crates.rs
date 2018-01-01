@@ -1,6 +1,5 @@
 extern crate all_crates_storage;
 extern crate reqwest;
-extern crate ring;
 
 use std::fs::{self, File};
 use std::io;
@@ -8,30 +7,7 @@ use std::env;
 use reqwest::Client;
 use all_crates_storage::registry::registry;
 use self::registry::{Registry, AllCratesJson};
-use ring::digest::{Context, SHA256};
-
-struct HashCtx(Context);
-
-impl io::Write for HashCtx {
-	fn write(&mut self, data: &[u8]) -> Result<usize, io::Error> {
-		self.0.update(data);
-		Ok(data.len())
-	}
-	fn flush(&mut self) -> Result<(), io::Error> {
-		Ok(())
-	}
-}
-
-impl HashCtx {
-	fn finish_and_get_digest_hex(self) -> String {
-		let digest = self.0.finish();
-		let mut hash_str = String::with_capacity(60);
-		for d in digest.as_ref().iter() {
-			hash_str += &format!("{:02x}", d);
-		}
-		hash_str
-	}
-}
+use all_crates_storage::hash_ctx::HashCtx;
 
 /// This is the URL pattern that we are using to download the .crate
 /// files from hosting.
@@ -94,9 +70,9 @@ fn main() {
 			match File::open(&crate_file_path) {
 				Ok(mut f) => {
 					// verify the checksum
-					let mut ring_ctx = HashCtx(Context::new(&SHA256));
-					io::copy(&mut f, &mut ring_ctx).unwrap();
-					let hash_str = ring_ctx.finish_and_get_digest_hex();
+					let mut hash_ctx = HashCtx::new();
+					io::copy(&mut f, &mut hash_ctx).unwrap();
+					let hash_str = hash_ctx.finish_and_get_digest_hex();
 					if hash_str == v.checksum {
 						println!("[{}/{}] Checksum verified for {} v{}",
 							ctr, total_file_count, name, v.version);
