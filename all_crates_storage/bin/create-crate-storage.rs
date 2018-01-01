@@ -4,6 +4,7 @@ use std::fs::{self, File};
 use std::env;
 use all_crates_storage::registry::registry;
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
+use all_crates_storage::crate_storage::{FileTreeStorage, CrateStorage};
 use self::registry::{Registry, AllCratesJson};
 
 fn main() {
@@ -22,8 +23,9 @@ fn main() {
 
 	let thread_count = 8;
 
+	let fts = FileTreeStorage::new(&storage_base);
 	let mut cst = BlobCrateStorage::new();
-	cst.fill_crate_storage_from_disk(thread_count, &acj, &storage_base,
+	cst.fill_crate_storage_from_source(thread_count, &acj, &fts,
 		|n, v| println!("Storing {} v {}", n, v.version));
 
 	let f = File::create(storage_con_base.join("crate_storage")).unwrap();

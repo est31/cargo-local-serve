@@ -2,11 +2,9 @@
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetaWithBlobs};
-use super::registry::registry::{CrateIndexJson, AllCratesJson, obtain_crate_name_path};
+use super::crate_storage::{CrateStorage, CrateSpec};
 
 use flate2::{Compression, GzBuilder};
-use std::fs::File;
-use std::path::Path;
 use std::io;
 
 pub struct BlobCrateStorage {
@@ -19,33 +17,13 @@ impl BlobCrateStorage {
 			b : BlobStorage::new(),
 		}
 	}
-	pub fn fill_crate_storage_from_disk(&mut self,
-			thread_count :u16, acj :&AllCratesJson, storage_base :&Path, progress_callback :fn(&str, &CrateIndexJson)) {
-		let crate_iter = acj.iter()
-			.flat_map(|&(ref name, ref versions)| {
-				let name_path = storage_base.join(obtain_crate_name_path(name));
-				let name = name.clone();
-				versions.iter().filter_map(move |v| {
-					progress_callback(&name, &v);
-					let name_str = format!("{}-{}.crate", name, v.version);
-					let crate_file_path = name_path.join(&name_str);
-					let mut f = match File::open(&crate_file_path) {
-						Ok(f) => f,
-						Err(_) => {
-							return None;
-						},
-					};
-					let mut file_buf = Vec::new();
-					io::copy(&mut f, &mut file_buf).unwrap();
-					let mut hctx = HashCtx::new();
-					io::copy(&mut file_buf.as_slice(), &mut hctx).unwrap();
-					let d = hctx.finish_and_get_digest();
-					Some((name_str, file_buf, d))
-				})
-			});
-		self.fill_crate_storage_iter(thread_count, crate_iter);
+
+	pub fn store<W :io::Write>(&mut self, wtr :W) -> io::Result<()> {
+		self.b.write_to_file(wtr)
 	}
-	pub fn fill_crate_storage_iter<I :Iterator<Item = (String, Vec<u8>, Digest)>>(
+}
+impl CrateStorage for BlobCrateStorage {
+	fn store_parallel_iter<I :Iterator<Item = (CrateSpec, Vec<u8>, Digest)>>(
 			&mut self, thread_count :u16, mut crate_iter :I) {
 		use std::sync::mpsc::{sync_channel, TrySendError};
 		use multiqueue::mpmc_queue;
@@ -75,8 +53,9 @@ impl BlobCrateStorage {
 			}
 			if par_task_backlog.is_empty() {
 				for _ in 0 .. 10 {
-					if let Some((n, b, d)) = crate_iter.next() {
-						par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(n, b, d));
+					if let Some((sp, b, d)) = crate_iter.next() {
+						let name = sp.file_name();
+						par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(name, b, d));
 						done_something = true;
 					}
 				}
@@ -103,9 +82,6 @@ impl BlobCrateStorage {
 				break;
 			}
 		}
-	}
-	pub fn store<W :io::Write>(&mut self, wtr :W) -> io::Result<()> {
-		self.b.write_to_file(wtr)
 	}
 }
 
