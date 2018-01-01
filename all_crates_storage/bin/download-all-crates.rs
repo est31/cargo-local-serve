@@ -21,8 +21,9 @@ use all_crates_storage::hash_ctx::HashCtx;
 /// ```
 /// https://crates.io/api/v1/crates/{cratename}/{version}/download
 /// ```
-/// This URL occurs in the crates.io
-///
+/// This URL occurs in the API response by crates.io when you ask
+/// the API about a crate via the usual request:
+/// https://crates.io/api/v1/crates/{cratename}
 ///
 /// But we don't want to fake download statistics, so we directly
 /// take the cloudfront URL.
