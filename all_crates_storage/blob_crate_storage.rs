@@ -136,7 +136,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store 
 			let CrateRecMetaWithBlobs { meta, blobs } = ccb.into_meta_with_blobs();
 			for entry in blobs {
 				let entry_digest = entry.0;
-				if blob_store.blobs.get(&entry_digest).is_none() {
+				if !blob_store.has(&entry_digest) {
 					emit_task(ParallelTask::CompressBlob(entry_digest, entry.1));
 				}
 			}
@@ -151,7 +151,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store 
 			// BlobStorage previously. In order to be on the safe
 			// side, check for existence before inserting into
 			// the blob storage.
-			if blob_store.blobs.get(&meta_blob_digest).is_none() {
+			if !blob_store.has(&meta_blob_digest) {
 				emit_task(ParallelTask::CompressBlob(meta_blob_digest, meta_blob));
 			}
 			// enter the meta blob into the blob storage
@@ -159,7 +159,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store 
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
-			blob_store.blobs.insert(d, blob);
+			blob_store.insert(d, blob);
 		},
 	}
 }

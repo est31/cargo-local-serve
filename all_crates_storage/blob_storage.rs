@@ -10,7 +10,7 @@ pub struct BlobStorage {
 	/// Note that not all blobs are present in this index, only those that represent
 	/// a crate.
 	pub index :HashMap<String, Digest>,
-	pub blobs :HashMap<Digest, Vec<u8>>,
+	blobs :HashMap<Digest, Vec<u8>>,
 }
 
 fn write_delim_byte_slice<W :Write>(mut wtr :W, sl :&[u8]) -> IoResult<()> {
@@ -34,11 +34,20 @@ impl BlobStorage {
 			blobs : HashMap::new(),
 		}
 	}
-	pub fn insert(&mut self, name :Option<String>, digest :Digest, content :Vec<u8>) {
+	pub fn insert_named_blob(&mut self, name :Option<String>, digest :Digest, content :Vec<u8>) {
 		if let Some(n) = name {
 			self.index.insert(n, digest);
 		}
 		self.blobs.insert(digest, content);
+	}
+	pub fn insert(&mut self, digest :Digest, content :Vec<u8>) {
+		self.blobs.insert(digest, content);
+	}
+	pub fn has(&self, digest :&Digest) -> bool {
+		self.blobs.get(digest).is_some()
+	}
+	pub fn get(&self, digest :&Digest) -> Option<&Vec<u8>> {
+		self.blobs.get(digest)
 	}
 	pub fn write_to_file<W :Write>(&self, mut wtr :W) -> IoResult<()> {
 		try!(wtr.write_u64::<BigEndian>(BLOB_MAGIC));
