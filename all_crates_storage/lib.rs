@@ -21,3 +21,6 @@ pub mod blob_storage;
 pub mod blob_crate_storage;
 pub mod hash_ctx;
 pub mod reconstruction;
+
+#[cfg(test)]
+mod blob_storage_test;

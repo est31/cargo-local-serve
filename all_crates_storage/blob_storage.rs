@@ -50,6 +50,7 @@ impl<S :Read + Seek> BlobStorage<S> {
 	pub fn load(mut storage :S) -> IoResult<Self> {
 		try!(storage.seek(SeekFrom::Start(0)));
 		let index_offset = try!(read_hdr(&mut storage));
+		try!(storage.seek(SeekFrom::Start(index_offset)));
 		let name_index = try!(read_name_idx(&mut storage));
 		let blob_offsets = try!(read_offset_table(&mut storage));
 		Ok(BlobStorage {
@@ -57,8 +58,7 @@ impl<S :Read + Seek> BlobStorage<S> {
 			blob_offsets,
 
 			storage,
-			// TODO don't hardcode this number somehow (get the length of the header)
-			index_offset : 64,
+			index_offset,
 		})
 	}
 
@@ -127,6 +127,7 @@ fn read_offset_table<R :Read>(mut rdr :R) -> IoResult<HashMap<Digest, u64>> {
 	Ok(tbl)
 }
 fn write_offset_table<W :Write>(mut wtr :W, tbl :&HashMap<Digest, u64>) -> IoResult<()> {
+	try!(wtr.write_u64::<BigEndian>(tbl.len() as u64));
 	for (d, o) in tbl.iter() {
 		try!(wtr.write(d));
 		try!(wtr.write_u64::<BigEndian>(*o));
