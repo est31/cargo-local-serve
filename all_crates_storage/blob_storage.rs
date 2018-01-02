@@ -95,8 +95,8 @@ impl<S :Seek + Write> BlobStorage<S> {
 		try!(self.storage.seek(SeekFrom::Start(0)));
 		try!(write_hdr(&mut self.storage, self.index_offset));
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
-		try!(write_offset_table(&mut self.storage, &self.blob_offsets));
 		try!(write_name_idx(&mut self.storage, &self.name_index));
+		try!(write_offset_table(&mut self.storage, &self.blob_offsets));
 		Ok(())
 	}
 }
