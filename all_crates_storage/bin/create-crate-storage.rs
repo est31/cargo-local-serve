@@ -1,6 +1,6 @@
 extern crate all_crates_storage;
 
-use std::fs::{self, File};
+use std::fs::{self, OpenOptions};
 use std::env;
 use all_crates_storage::registry::registry;
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
@@ -24,10 +24,14 @@ fn main() {
 	let thread_count = 8;
 
 	let fts = FileTreeStorage::new(&storage_base);
-	let mut cst = BlobCrateStorage::new();
+	let f = OpenOptions::new()
+		.read(true)
+		.write(true)
+		.create(true)
+		.open(storage_con_base.join("crate_storage")).unwrap();
+	let mut cst = BlobCrateStorage::new(f).unwrap();
 	cst.fill_crate_storage_from_source(thread_count, &acj, &fts,
 		|n, v| println!("Storing {} v {}", n, v.version));
 
-	let f = File::create(storage_con_base.join("crate_storage")).unwrap();
-	cst.store(f).unwrap();
+	cst.store().unwrap();
 }

@@ -5,24 +5,35 @@ use super::reconstruction::{CrateContentBlobs, CrateRecMetaWithBlobs};
 use super::crate_storage::{CrateStorage, CrateSpec};
 
 use flate2::{Compression, GzBuilder};
-use std::io;
+use std::io::{self, Read, Seek, Write, Result as IoResult};
 
-pub struct BlobCrateStorage {
-	b :BlobStorage,
+pub struct BlobCrateStorage<S :Read + Seek> {
+	b :BlobStorage<S>,
 }
 
-impl BlobCrateStorage {
-	pub fn new() -> BlobCrateStorage {
+impl<S :Read + Seek + Write> BlobCrateStorage<S> {
+	pub fn empty(storage :S) -> Self {
 		BlobCrateStorage {
-			b : BlobStorage::new(),
+			b : BlobStorage::empty(storage),
 		}
 	}
+	pub fn new(storage :S) -> IoResult<Self> {
+		Ok(BlobCrateStorage {
+			b : try!(BlobStorage::new(storage)),
+		})
+	}
+	pub fn load(storage :S) -> IoResult<Self> {
+		Ok(BlobCrateStorage {
+			b : try!(BlobStorage::load(storage)),
+		})
+	}
 
-	pub fn store<W :io::Write>(&mut self, wtr :W) -> io::Result<()> {
-		self.b.write_to_file(wtr)
+	pub fn store(&mut self) -> io::Result<()> {
+		try!(self.b.write_header_and_index());
+		Ok(())
 	}
 }
-impl CrateStorage for BlobCrateStorage {
+impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	fn store_parallel_iter<I :Iterator<Item = (CrateSpec, Vec<u8>, Digest)>>(
 			&mut self, thread_count :u16, mut crate_iter :I) {
 		use std::sync::mpsc::{sync_channel, TrySendError};
@@ -127,7 +138,8 @@ fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_ta
 	}
 }
 
-fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store :&mut BlobStorage, mut emit_task :ET) {
+fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :BlockingTask,
+		blob_store :&mut BlobStorage<S>, mut emit_task :ET) {
 	match task {
 		BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_blob) => {
 			// TODO
@@ -159,7 +171,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask)>(task :BlockingTask, blob_store 
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
-			blob_store.insert(d, blob);
+			blob_store.insert(d, &blob).unwrap();
 		},
 	}
 }
