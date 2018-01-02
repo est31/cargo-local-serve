@@ -9,8 +9,8 @@ pub struct BlobStorage<S> {
 	///
 	/// Note that not all blobs are present in this index, only those that represent
 	/// a crate.
-	pub index :HashMap<String, Digest>,
-	blobs :HashMap<Digest, u64>,
+	pub name_index :HashMap<String, Digest>,
+	blob_offsets :HashMap<Digest, u64>,
 	storage :S,
 	index_offset :u64,
 }
@@ -30,8 +30,8 @@ fn read_delim_byte_slice<R :Read>(mut rdr :R) -> IoResult<Vec<u8>> {
 impl<S :Read + Seek> BlobStorage<S> {
 	pub fn empty(storage :S) -> Self {
 		BlobStorage {
-			index : HashMap::new(),
-			blobs : HashMap::new(),
+			name_index : HashMap::new(),
+			blob_offsets : HashMap::new(),
 
 			storage,
 			// TODO don't hardcode this number somehow (get the length of the header)
@@ -50,22 +50,23 @@ impl<S :Read + Seek> BlobStorage<S> {
 	pub fn load(mut storage :S) -> IoResult<Self> {
 		try!(storage.seek(SeekFrom::Start(0)));
 		let index_offset = try!(read_hdr(&mut storage));
-		let index = try!(read_name_idx(&mut storage));
-		let blobs = try!(read_offset_table(&mut storage));
+		let name_index = try!(read_name_idx(&mut storage));
+		let blob_offsets = try!(read_offset_table(&mut storage));
 		Ok(BlobStorage {
-			index,
-			blobs,
+			name_index,
+			blob_offsets,
 
 			storage,
 			// TODO don't hardcode this number somehow (get the length of the header)
 			index_offset : 64,
 		})
 	}
+
 	pub fn has(&self, digest :&Digest) -> bool {
-		self.blobs.get(digest).is_some()
+		self.blob_offsets.get(digest).is_some()
 	}
 	pub fn get(&mut self, digest :&Digest) -> IoResult<Option<Vec<u8>>> {
-		let blob_offs = match self.blobs.get(digest) {
+		let blob_offs = match self.blob_offsets.get(digest) {
 			Some(d) => *d,
 			None => return Ok(None),
 		};
@@ -78,13 +79,13 @@ impl<S :Read + Seek> BlobStorage<S> {
 impl<S :Seek + Write> BlobStorage<S> {
 	pub fn insert_named_blob(&mut self, name :Option<String>, digest :Digest, content :&[u8]) -> IoResult<()> {
 		if let Some(n) = name {
-			self.index.insert(n, digest);
+			self.name_index.insert(n, digest);
 		}
 		try!(self.insert(digest, &content));
 		Ok(())
 	}
 	pub fn insert(&mut self, digest :Digest, content :&[u8]) -> IoResult<()> {
-		self.blobs.insert(digest, self.index_offset);
+		self.blob_offsets.insert(digest, self.index_offset);
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
 		try!(write_delim_byte_slice(&mut self.storage, content));
 		self.index_offset = try!(self.storage.seek(SeekFrom::Current(0)));
@@ -94,8 +95,8 @@ impl<S :Seek + Write> BlobStorage<S> {
 		try!(self.storage.seek(SeekFrom::Start(0)));
 		try!(write_hdr(&mut self.storage, self.index_offset));
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
-		try!(write_offset_table(&mut self.storage, &self.blobs));
-		try!(write_name_idx(&mut self.storage, &self.index));
+		try!(write_offset_table(&mut self.storage, &self.blob_offsets));
+		try!(write_name_idx(&mut self.storage, &self.name_index));
 		Ok(())
 	}
 }

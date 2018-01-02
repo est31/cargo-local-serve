@@ -167,7 +167,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 				emit_task(ParallelTask::CompressBlob(meta_blob_digest, meta_blob));
 			}
 			// enter the meta blob into the blob storage
-			blob_store.index.insert(crate_file_name, meta_blob_digest);
+			blob_store.name_index.insert(crate_file_name, meta_blob_digest);
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
