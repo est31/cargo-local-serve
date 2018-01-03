@@ -151,7 +151,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 			let CrateRecMetaWithBlobs { meta, blobs } = ccb.into_meta_with_blobs();
 			for entry in blobs {
 				let entry_digest = entry.0;
-				if !blobs_to_store.insert(entry_digest) {
+				if blobs_to_store.insert(entry_digest) {
 					emit_task(ParallelTask::CompressBlob(entry_digest, entry.1));
 				}
 			}
@@ -166,7 +166,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 			// BlobStorage previously. In order to be on the safe
 			// side, check for existence before inserting into
 			// the blob storage.
-			if !blobs_to_store.insert(meta_blob_digest) {
+			if blobs_to_store.insert(meta_blob_digest) {
 				emit_task(ParallelTask::CompressBlob(meta_blob_digest, meta_blob));
 			}
 			// enter the meta blob into the blob storage
@@ -174,12 +174,12 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
-			let was_present = blob_store.insert(d, &blob).unwrap();
+			let actually_added = blob_store.insert(d, &blob).unwrap();
 			// If the blob is already present, it indicates a bug because
 			// we are supposed to check for presence before we ask for the
 			// blob to be compressed. If we would just shrug this off, we'd
 			// waste cycles spent on compressing the blobs.
-			assert!(!was_present, "Tried to insert a blob into the storage that was already present");
+			assert!(actually_added, "Tried to insert a blob into the storage that was already present");
 		},
 	}
 }
