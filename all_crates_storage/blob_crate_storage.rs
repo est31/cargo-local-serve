@@ -174,7 +174,12 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 
 		},
 		BlockingTask::StoreBlob(d, blob) => {
-			blob_store.insert(d, &blob).unwrap();
+			let was_present = blob_store.insert(d, &blob).unwrap();
+			// If the blob is already present, it indicates a bug because
+			// we are supposed to check for presence before we ask for the
+			// blob to be compressed. If we would just shrug this off, we'd
+			// waste cycles spent on compressing the blobs.
+			assert!(!was_present, "Tried to insert a blob into the storage that was already present");
 		},
 	}
 }

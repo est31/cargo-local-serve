@@ -1,6 +1,7 @@
 
 use std::io::{Read, Write, Seek, SeekFrom, Result as IoResult, ErrorKind};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use super::hash_ctx::Digest;
 
@@ -84,12 +85,16 @@ impl<S :Seek + Write> BlobStorage<S> {
 		try!(self.insert(digest, &content));
 		Ok(())
 	}
-	pub fn insert(&mut self, digest :Digest, content :&[u8]) -> IoResult<()> {
-		self.blob_offsets.insert(digest, self.index_offset);
+	pub fn insert(&mut self, digest :Digest, content :&[u8]) -> IoResult<bool> {
+		let e = self.blob_offsets.entry(digest);
+		match e {
+			Entry::Occupied(o) => return Ok(false),
+			Entry::Vacant(v) => v.insert(self.index_offset),
+		};
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
 		try!(write_delim_byte_slice(&mut self.storage, content));
 		self.index_offset = try!(self.storage.seek(SeekFrom::Current(0)));
-		Ok(())
+		Ok(true)
 	}
 	pub fn write_header_and_index(&mut self) -> IoResult<()> {
 		try!(self.storage.seek(SeekFrom::Start(0)));
