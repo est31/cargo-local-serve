@@ -11,8 +11,7 @@ use std::collections::HashSet;
 pub struct BlobCrateStorage<S :Read + Seek> {
 	b :BlobStorage<S>,
 }
-
-impl<S :Read + Seek + Write> BlobCrateStorage<S> {
+impl<S :Read + Seek> BlobCrateStorage<S> {
 	pub fn empty(storage :S) -> Self {
 		BlobCrateStorage {
 			b : BlobStorage::empty(storage),
@@ -28,12 +27,15 @@ impl<S :Read + Seek + Write> BlobCrateStorage<S> {
 			b : try!(BlobStorage::load(storage)),
 		})
 	}
+}
 
+impl<S :Read + Seek + Write> BlobCrateStorage<S> {
 	pub fn store(&mut self) -> io::Result<()> {
 		try!(self.b.write_header_and_index());
 		Ok(())
 	}
 }
+
 impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	fn store_parallel_iter<I :Iterator<Item = (CrateSpec, Vec<u8>, Digest)>>(
 			&mut self, thread_count :u16, mut crate_iter :I) {
