@@ -1,12 +1,12 @@
 extern crate all_crates_storage;
 
-use std::fs::File;
 use std::io;
 use std::env;
 use std::path::Path;
 use all_crates_storage::registry::registry;
 use all_crates_storage::reconstruction::{CrateContentBlobs};
 use all_crates_storage::hash_ctx::{HashCtx, get_digest_hex};
+use all_crates_storage::crate_storage::{CrateSource, FileTreeStorage};
 use self::registry::{Registry, AllCratesJson};
 
 use std::thread;
@@ -50,8 +50,9 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 		}
 	}
 
+	let crate_source = FileTreeStorage::new(storage_base);
+
 	for &(ref name, ref versions) in acj.iter() {
-		let name_path = storage_base.join(registry::obtain_crate_name_path(name));
 
 		if BLACKLIST.contains(&&name[..]) {
 			ctr += versions.len();
@@ -66,36 +67,33 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 			if ctr % tc != t {
 				continue;
 			}
-			let crate_file_path = name_path
-				.join(format!("{}-{}.crate", name, v.version));
-			match File::open(&crate_file_path) {
-				Ok(mut f) => {
-					// verify the checksum
-					let mut ring_ctx = HashCtx::new();
-					io::copy(&mut f, &mut ring_ctx).unwrap();
-					let hash_str = ring_ctx.finish_and_get_digest_hex();
-					if hash_str == v.checksum {
-						// everything is fine!
-					} else {
-						pln!("Checksum mismatch for {} v{}. \
-								Ignoring. expected: '{}' was: '{}'",
-								name, v.version, v.checksum, hash_str);
-						// Ignore
-						continue;
-					}
-				},
-				Err(_) => {
-					pln!("File not found for {} v{}", name, v.version);
+			let crate_blob = crate_source.get_crate_nv(name.clone(), v.version.clone());
+			let crate_blob = if let Some(crate_blob) = crate_blob {
+				// verify the checksum
+				let mut ring_ctx = HashCtx::new();
+				io::copy(&mut crate_blob.as_slice(), &mut ring_ctx).unwrap();
+				let hash_str = ring_ctx.finish_and_get_digest_hex();
+				if hash_str == v.checksum {
+					// everything is fine!
+					crate_blob
+				} else {
+					pln!("Checksum mismatch for {} v{}. \
+							Ignoring. expected: '{}' was: '{}'",
+							name, v.version, v.checksum, hash_str);
 					// Ignore
 					continue;
-				},
-			}
+				}
+			} else {
+				pln!("Crate not present for {} v{}", name, v.version);
+				// Ignore
+				continue;
+			};
 			pln!("Diffing {} v{}", name, v.version);
 
 			// Do the diffing.
-			let f = File::open(&crate_file_path).unwrap();
+
 			// Create the blobs
-			let archive_blobs = match CrateContentBlobs::from_archive_file(f) {
+			let archive_blobs = match CrateContentBlobs::from_archive_file(crate_blob.as_slice()) {
 				Ok(b) => b,
 				Err(e) => {
 					pln!("ERROR FOR {} v{}: {:?}", name, v.version, e);

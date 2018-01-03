@@ -19,6 +19,12 @@ impl CrateSpec {
 }
 
 pub trait CrateSource {
+	fn get_crate_nv(&self, name :String, version :Version) -> Option<Vec<u8>> {
+		self.get_crate(&CrateSpec {
+			name,
+			version,
+		})
+	}
 	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>>;
 }
 
