@@ -6,6 +6,7 @@ use super::crate_storage::{CrateStorage, CrateSpec};
 
 use flate2::{Compression, GzBuilder};
 use std::io::{self, Read, Seek, Write, Result as IoResult};
+use std::collections::HashSet;
 
 pub struct BlobCrateStorage<S :Read + Seek> {
 	b :BlobStorage<S>,
@@ -55,11 +56,12 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 		drop(bt_tx);
 		pt_rx.unsubscribe();
 		let mut par_task_backlog = Vec::new();
+		let mut blobs_to_store = HashSet::new();
 		loop {
 			let mut done_something = false;
 			if let Ok((tid, task)) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
 				handle_blocking_task(task, &mut self.b,
-					|tsk| par_task_backlog.push(tsk));
+					&mut blobs_to_store, |tsk| par_task_backlog.push(tsk));
 				done_something = true;
 			}
 			if par_task_backlog.is_empty() {
@@ -139,7 +141,8 @@ fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_ta
 }
 
 fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :BlockingTask,
-		blob_store :&mut BlobStorage<S>, mut emit_task :ET) {
+		blob_store :&mut BlobStorage<S>, blobs_to_store :&mut HashSet<Digest>,
+		mut emit_task :ET) {
 	match task {
 		BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_blob) => {
 			// TODO
@@ -148,7 +151,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 			let CrateRecMetaWithBlobs { meta, blobs } = ccb.into_meta_with_blobs();
 			for entry in blobs {
 				let entry_digest = entry.0;
-				if !blob_store.has(&entry_digest) {
+				if !blobs_to_store.insert(entry_digest) {
 					emit_task(ParallelTask::CompressBlob(entry_digest, entry.1));
 				}
 			}
@@ -163,7 +166,7 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 			// BlobStorage previously. In order to be on the safe
 			// side, check for existence before inserting into
 			// the blob storage.
-			if !blob_store.has(&meta_blob_digest) {
+			if !blobs_to_store.insert(meta_blob_digest) {
 				emit_task(ParallelTask::CompressBlob(meta_blob_digest, meta_blob));
 			}
 			// enter the meta blob into the blob storage
