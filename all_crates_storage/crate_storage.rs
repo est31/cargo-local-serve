@@ -105,3 +105,31 @@ impl CrateSource for FileTreeStorage {
 		Some(file_buf)
 	}
 }
+
+pub struct CacheStorage {
+	storage_base :PathBuf,
+}
+
+impl CacheStorage {
+	pub fn new(storage_base :&Path) -> Self {
+		CacheStorage {
+			storage_base : storage_base.to_path_buf(),
+		}
+	}
+}
+
+impl CrateSource for CacheStorage {
+	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>> {
+		let crate_file_path = self.storage_base
+			.join(spec.file_name());
+		let mut f = match File::open(&crate_file_path) {
+			Ok(f) => f,
+			Err(_) => {
+				return None;
+			},
+		};
+		let mut file_buf = Vec::new();
+		io::copy(&mut f, &mut file_buf).unwrap();
+		Some(file_buf)
+	}
+}

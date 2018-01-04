@@ -1,7 +1,6 @@
 use std::{io, env};
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::fs::File;
 use semver::VersionReq;
 use serde_json::from_str;
 use serde::de::{Deserialize, Deserializer};
@@ -9,6 +8,7 @@ use failure::{Context, ResultExt};
 
 use semver::Version;
 use git2::{self, Repository};
+use super::super::crate_storage::CacheStorage;
 
 #[derive(Serialize, Debug)]
 pub struct Dependency {
@@ -130,8 +130,8 @@ impl Registry {
 		// For crates.io it is "github.com-1ecc6299db9ec823"
 		let home = try!(env::var("HOME"));
 		let base_path = Path::new(&home).join(".cargo/registry/");
-		//let cache_path = base_path.join("cache").join(name);
-		let cache_path = env::current_dir().unwrap().join("crate-archives");
+		let cache_path = base_path.join("cache").join(name);
+		//let cache_path = env::current_dir().unwrap().join("crate-archives");
 		let index_path = base_path.join("index").join(name);
 		Ok(Registry {
 			cache_path,
@@ -204,12 +204,7 @@ impl Registry {
 		}));
 		Ok(res)
 	}
-	pub fn get_crate_file(&self, crate_name :&str, crate_version :&Version) ->
-			io::Result<File> {
-		let p = self.cache_path
-			.join(obtain_crate_name_path(crate_name))
-			.join(format!("{}-{}.crate",
-				crate_name, crate_version));
-		Ok(try!(File::open(p)))
+	pub fn get_cache_storage(&self) -> CacheStorage {
+		CacheStorage::new(&self.cache_path)
 	}
 }

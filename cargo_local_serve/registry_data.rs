@@ -2,7 +2,7 @@ use hbs::handlebars::to_json;
 use serde_json::value::{Value, Map};
 use flate2::read::GzDecoder;
 use tar::Archive;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::Read;
 use toml;
 use semver::Version as SvVersion;
 use semver::VersionReq;
@@ -10,6 +10,7 @@ use urlencoded::QueryMap;
 
 use all_crates_storage::registry::registry::{Dependency, Registry, DependencyKind};
 use all_crates_storage::registry::statistics::CrateStats;
+use all_crates_storage::crate_storage::CrateSource;
 use super::markdown_render::render_markdown;
 
 #[derive(Serialize, Debug)]
@@ -147,8 +148,8 @@ fn extract_path_from_gz<T :Read>(r :T,
 	return None;
 }
 
-pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
-		-> Option<Map<String, Value>> {
+pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&C,
+		version :Option<&str>) -> Option<Map<String, Value>> {
 
 	#[derive(Deserialize)]
 	struct CratePackage {
@@ -177,13 +178,14 @@ pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
 		// -- then the crate is not present!!!
 		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
 	};
-	let mut f = match reg.get_crate_file(&name, &version).ok() {
+	let fb = match st.get_crate_nv(name.to_owned(), version.clone()) {
 		Some(f) => f,
 		None => panic!("Version {} of crate {} not mirrored", version, name),
 	};
-	let cargo_toml_extracted = extract_path_from_gz(&f,
+	let f = fb.as_slice();
+	let cargo_toml_extracted = extract_path_from_gz(f,
 		&format!("{}-{}/Cargo.toml", name, version));
-	f.seek(SeekFrom::Start(0)).unwrap();
+	let f = fb.as_slice();
 
 	let cargo_toml_file = if let Some(toml_file) = cargo_toml_extracted {
 		toml_file
@@ -194,7 +196,7 @@ pub fn get_crate_data(name :String, reg :&Registry, version :Option<&str>)
 	let info :CrateInfo = otry!(toml::from_slice(&cargo_toml_file));
 
 	let readme_html = if let Some(filename) = info.package.readme {
-		if let Some(c) = extract_path_from_gz(&f,
+		if let Some(c) = extract_path_from_gz(f,
 				&format!("{}-{}/{}", name, version, filename)) {
 			if let Ok(s) = String::from_utf8(c) {
 				Some(render_markdown(&s))
@@ -430,7 +432,7 @@ pub enum CrateFileData {
 	FileContent(Map<String, Value>),
 }
 
-pub fn get_crate_file_data(reg :&Registry,
+pub fn get_crate_file_data<C :CrateSource>(st :&C,
 	name :&str, version_str :&str, path :&[&str])
 		-> CrateFileData {
 	use std::str;
@@ -440,10 +442,11 @@ pub fn get_crate_file_data(reg :&Registry,
 
 	// First step: find the path to the crate.
 	let version = SvVersion::parse(version_str).unwrap();
-	let mut f = match reg.get_crate_file(&name, &version).ok() {
+	let fb = match st.get_crate_nv(name.to_owned(), version.clone()) {
 		Some(f) => f,
 		None => panic!("Version {} of crate {} not mirrored", version, name),
 	};
+	let f = fb.as_slice();
 	let file_path_str = path.iter().fold(String::new(), |s, u| s + "/" + u);
 
 	if file_path_str.len() <= 1 {
@@ -463,7 +466,7 @@ pub fn get_crate_file_data(reg :&Registry,
 
 		let file_list = {
 			let mut l = Vec::new();
-			let decoded = GzDecoder::new(&f);
+			let decoded = GzDecoder::new(f);
 			let mut archive = Archive::new(decoded);
 			for entry in archive.entries().unwrap() {
 				let mut entry = entry.unwrap();
@@ -473,7 +476,6 @@ pub fn get_crate_file_data(reg :&Registry,
 			}
 			l
 		};
-		f.seek(SeekFrom::Start(0)).unwrap();
 
 		let listing = CrateFileListing {
 			name : name.to_owned(),
@@ -494,7 +496,7 @@ pub fn get_crate_file_data(reg :&Registry,
 			file_path :String,
 			content_html :String,
 		}
-		let content_raw = extract_path_from_gz(&f, &file_path_str[1..])
+		let content_raw = extract_path_from_gz(f, &file_path_str[1..])
 			.expect("Path not found in crate file");
 		let content_html = match str::from_utf8(&content_raw) {
 			Ok(content_str) => {
