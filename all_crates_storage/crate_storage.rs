@@ -18,6 +18,16 @@ impl CrateSpec {
 	}
 }
 
+pub trait MutCrateSource {
+	fn get_crate_mutably_nv(&mut self, name :String, version :Version) -> Option<Vec<u8>> {
+		self.get_crate_mutably(&CrateSpec {
+			name,
+			version,
+		})
+	}
+	fn get_crate_mutably(&mut self, spec :&CrateSpec) -> Option<Vec<u8>>;
+}
+
 pub trait CrateSource {
 	fn get_crate_nv(&self, name :String, version :Version) -> Option<Vec<u8>> {
 		self.get_crate(&CrateSpec {
@@ -26,6 +36,12 @@ pub trait CrateSource {
 		})
 	}
 	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>>;
+}
+
+impl MutCrateSource for CrateSource {
+	fn get_crate_mutably(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
+		self.get_crate(spec)
+	}
 }
 
 pub trait CrateStorage {

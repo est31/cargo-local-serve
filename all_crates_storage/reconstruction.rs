@@ -109,6 +109,18 @@ impl CrateContentBlobs {
 			blobs,
 		}
 	}
+
+	pub(crate) fn from_meta_with_blobs(m :CrateRecMetaWithBlobs) -> Self {
+		let entries = m.meta.entry_metadata.into_iter()
+			.zip(m.blobs.into_iter())
+			.map(|((h, _), (_, b))| (h, b))
+			.collect::<Vec<_>>();
+		CrateContentBlobs {
+			gz_file_name : m.meta.gz_file_name,
+			gz_os : m.meta.gz_os,
+			entries,
+		}
+	}
 }
 
 impl CrateRecMetadata {

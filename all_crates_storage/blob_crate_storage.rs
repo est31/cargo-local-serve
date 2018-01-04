@@ -1,10 +1,12 @@
 
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
-use super::reconstruction::{CrateContentBlobs, CrateRecMetaWithBlobs};
-use super::crate_storage::{CrateStorage, CrateSpec};
+use super::reconstruction::{CrateContentBlobs, CrateRecMetadata,
+	CrateRecMetaWithBlobs};
+use super::crate_storage::{CrateStorage, CrateSpec, MutCrateSource};
 
 use flate2::{Compression, GzBuilder};
+use flate2::read::GzDecoder;
 use std::io::{self, Read, Seek, Write, Result as IoResult};
 use std::collections::HashSet;
 
@@ -100,6 +102,43 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	}
 }
 
+impl<S :Read + Seek + Write> MutCrateSource for BlobCrateStorage<S> {
+	fn get_crate_mutably(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
+		macro_rules! optry {
+			($e:expr) => {
+				match $e {
+					Some(d) => d,
+					None => return None,
+				}
+			};
+		}
+		macro_rules! decompress {
+			($e:expr) => {{
+				let mut gz_dec = GzDecoder::new($e.as_slice());
+				let mut r = Vec::new();
+				io::copy(&mut gz_dec, &mut r).unwrap();
+				r
+			}}
+		}
+		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
+
+		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
+		let dmeta = decompress!(cmeta);
+		let meta = optry!(CrateRecMetadata::deserialize(dmeta.as_slice()).ok());
+		let mut blobs = Vec::with_capacity(meta.entry_metadata.len());
+		for &(ref _hdr, ref d) in meta.entry_metadata.iter() {
+			let blob = optry!(optry!(self.b.get(d).ok()));
+			let decompressed = decompress!(blob);
+			blobs.push((*d, decompressed));
+		}
+		let crmb = CrateRecMetaWithBlobs {
+			meta,
+			blobs
+		};
+		let ccb = CrateContentBlobs::from_meta_with_blobs(crmb);
+		Some(ccb.to_archive_file())
+	}
+}
 
 /// Tasks that can be executed in parallel
 enum ParallelTask {
