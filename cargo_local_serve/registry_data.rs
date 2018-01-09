@@ -148,7 +148,7 @@ fn extract_path_from_gz<T :Read>(r :T,
 	return None;
 }
 
-pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&C,
+pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		version :Option<&str>) -> Option<Map<String, Value>> {
 
 	#[derive(Deserialize)]
@@ -432,7 +432,7 @@ pub enum CrateFileData {
 	FileContent(Map<String, Value>),
 }
 
-pub fn get_crate_file_data<C :CrateSource>(st :&C,
+pub fn get_crate_file_data<C :CrateSource>(st :&mut C,
 	name :&str, version_str :&str, path :&[&str])
 		-> CrateFileData {
 	use std::str;

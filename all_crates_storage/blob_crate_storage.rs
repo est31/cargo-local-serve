@@ -3,7 +3,7 @@ use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetadata,
 	CrateRecMetaWithBlobs};
-use super::crate_storage::{CrateStorage, CrateSpec, MutCrateSource};
+use super::crate_storage::{CrateStorage, CrateSpec, CrateSource};
 
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
@@ -102,8 +102,8 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	}
 }
 
-impl<S :Read + Seek + Write> MutCrateSource for BlobCrateStorage<S> {
-	fn get_crate_mutably(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
+impl<S :Read + Seek + Write> CrateSource for BlobCrateStorage<S> {
+	fn get_crate(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
 		macro_rules! optry {
 			($e:expr) => {
 				match $e {

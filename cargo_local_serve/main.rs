@@ -143,7 +143,7 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	let opt_version = path.get(1).map(|v| *v);
 	let mut resp = Response::new();
 	let crate_data = registry_data::get_crate_data(name.to_string(),
-		&REGISTRY, &REGISTRY.get_cache_storage(), opt_version);
+		&REGISTRY, &mut REGISTRY.get_cache_storage(), opt_version);
 	if let Some(data) = crate_data {
 		resp.set_mut(Template::new("crate", data))
 			.set_mut(status::Ok);
@@ -212,7 +212,7 @@ fn crate_files(req :&mut Request) -> IronResult<Response> {
 	let mut resp = Response::new();
 
 	let crate_file_data = registry_data::get_crate_file_data(
-		&REGISTRY.get_cache_storage(), name, version, &path[2..]);
+		&mut REGISTRY.get_cache_storage(), name, version, &path[2..]);
 	let template = match crate_file_data {
 		FileListing(data) => Template::new("file-listing", data),
 		FileContent(data) => Template::new("file-content", data),

@@ -50,7 +50,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 		}
 	}
 
-	let crate_source = FileTreeStorage::new(storage_base);
+	let mut crate_source = FileTreeStorage::new(storage_base);
 
 	for &(ref name, ref versions) in acj.iter() {
 

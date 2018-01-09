@@ -23,14 +23,14 @@ fn main() {
 
 	let thread_count = 8;
 
-	let fts = FileTreeStorage::new(&storage_base);
+	let mut fts = FileTreeStorage::new(&storage_base);
 	let f = OpenOptions::new()
 		.read(true)
 		.write(true)
 		.create(true)
 		.open(storage_con_base.join("crate_storage")).unwrap();
 	let mut cst = BlobCrateStorage::new(f).unwrap();
-	cst.fill_crate_storage_from_source(thread_count, &acj, &fts,
+	cst.fill_crate_storage_from_source(thread_count, &acj, &mut fts,
 		|n, v| println!("Storing {} v {}", n, v.version));
 
 	cst.store().unwrap();

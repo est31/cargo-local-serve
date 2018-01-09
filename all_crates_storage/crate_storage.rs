@@ -2,6 +2,7 @@ use semver::Version;
 use super::hash_ctx::{HashCtx, Digest};
 use super::registry::registry::{CrateIndexJson, AllCratesJson};
 use std::path::{Path, PathBuf};
+use std::cell::RefCell;
 use std::fs::File;
 use std::io;
 use registry::registry::obtain_crate_name_path;
@@ -18,30 +19,14 @@ impl CrateSpec {
 	}
 }
 
-pub trait MutCrateSource {
-	fn get_crate_mutably_nv(&mut self, name :String, version :Version) -> Option<Vec<u8>> {
-		self.get_crate_mutably(&CrateSpec {
-			name,
-			version,
-		})
-	}
-	fn get_crate_mutably(&mut self, spec :&CrateSpec) -> Option<Vec<u8>>;
-}
-
 pub trait CrateSource {
-	fn get_crate_nv(&self, name :String, version :Version) -> Option<Vec<u8>> {
+	fn get_crate_nv(&mut self, name :String, version :Version) -> Option<Vec<u8>> {
 		self.get_crate(&CrateSpec {
 			name,
 			version,
 		})
 	}
-	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>>;
-}
-
-impl MutCrateSource for CrateSource {
-	fn get_crate_mutably(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
-		self.get_crate(spec)
-	}
+	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>>;
 }
 
 pub trait CrateStorage {
@@ -49,13 +34,20 @@ pub trait CrateStorage {
 			&mut self, thread_count :u16, crate_iter :I);
 
 	fn fill_crate_storage_from_source<S :CrateSource>(&mut self,
-			thread_count :u16, acj :&AllCratesJson, source :&S,
+			thread_count :u16, acj :&AllCratesJson, source :&mut S,
 			progress_callback :fn(&str, &CrateIndexJson)) {
+		// Iterators are cool they told me.
+		// Iterators are idiomatic they told me.
+		// THEN WHY THE FUCK DO I NEED THIS REFCELL CRAP?!?!?!
+		// https://stackoverflow.com/a/28521985
+		let source_cell = RefCell::new(source);
 		let crate_iter = acj.iter()
 			.flat_map(|&(ref name, ref versions)| {
 				let name = name.clone();
+				let source_cell = &source_cell;
 				versions.iter().filter_map(move |v| {
 					let name = name.clone();
+					let mut source = source_cell.borrow_mut();
 					progress_callback(&name, &v);
 
 					let spec = CrateSpec {
@@ -90,7 +82,7 @@ impl FileTreeStorage {
 }
 
 impl CrateSource for FileTreeStorage {
-	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>> {
+	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
 		let crate_file_path = self.storage_base
 			.join(obtain_crate_name_path(&spec.name))
 			.join(spec.file_name());
@@ -119,7 +111,7 @@ impl CacheStorage {
 }
 
 impl CrateSource for CacheStorage {
-	fn get_crate(&self, spec :&CrateSpec) -> Option<Vec<u8>> {
+	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
 		let crate_file_path = self.storage_base
 			.join(spec.file_name());
 		let mut f = match File::open(&crate_file_path) {
