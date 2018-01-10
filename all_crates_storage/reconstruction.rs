@@ -33,6 +33,12 @@ pub struct CrateContentBlobs {
 	entries :Vec<(Box<[u8; 512]>, Vec<u8>)>,
 }
 
+pub(crate) fn hdr_from_ptr(p :&[u8; 512]) -> &Header {
+	unsafe {
+		mem::transmute(p)
+	}
+}
+
 impl CrateContentBlobs {
 	/// Creates the CrateContentBlobs structure from a given .crate file
 	pub fn from_archive_file<R :io::Read>(archive_rdr :R) -> io::Result<Self> {
@@ -71,9 +77,7 @@ impl CrateContentBlobs {
 			let mut bld = TarBuilder::new(&mut gz_enc);
 			for entry in &self.entries {
 				let hdr_buf = entry.0.clone();
-				let hdr :&Header = unsafe {
-					mem::transmute(hdr_buf)
-				};
+				let hdr = hdr_from_ptr(&hdr_buf);
 				let content_sl :&[u8] = &entry.1;
 				bld.append(&hdr, content_sl).unwrap();
 			}
