@@ -9,7 +9,6 @@ extern crate flate2;
 extern crate staticfile;
 extern crate mount;
 extern crate urlencoded;
-extern crate tar;
 extern crate toml;
 extern crate semver;
 #[macro_use]
