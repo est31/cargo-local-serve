@@ -27,7 +27,6 @@ syntect = "2.0"
 
 # all the other stuff
 toml = "0.4.5"
-string-interner = "0.6.3"
 serde = "1.0.0"
 serde_json = "1.0.0"
 serde_derive = "1.0.0"
@@ -36,5 +35,4 @@ flate2 = "=1.0.1"
 semver = { version = "0.9", features = ["serde"] }
 lazy_static = "0.2"
 failure = "0.1.0"
-failure_derive = "0.1.0"
 reqwest = "0.8"

@@ -18,7 +18,6 @@ extern crate ammonia;
 extern crate syntect;
 #[macro_use]
 extern crate lazy_static;
-extern crate string_interner;
 extern crate failure;
 
 extern crate all_crates_storage;
