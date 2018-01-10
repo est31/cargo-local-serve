@@ -172,4 +172,14 @@ impl CrateRecMetadata {
 		}
 		Ok(())
 	}
+	pub fn get_file_list(&self) -> Vec<String> {
+		self.entry_metadata.iter()
+			.map(|&(ref h, _)| {
+				let hdr = hdr_from_ptr(h);
+				let path = hdr.path().unwrap();
+				let s :String = path.to_str().unwrap().to_owned();
+				s
+			})
+			.collect::<Vec<_>>()
+	}
 }

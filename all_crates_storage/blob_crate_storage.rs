@@ -1,9 +1,9 @@
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetadata,
-	CrateRecMetaWithBlobs};
+	CrateRecMetaWithBlobs, hdr_from_ptr};
 use super::crate_storage::{CrateStorage, CrateSpec, CrateSource,
-	CrateHandle, BlobCrateHandle};
+	CrateHandle, CrateFileHandle};
 
 use semver::Version;
 use flate2::{Compression, GzBuilder};
@@ -103,37 +103,71 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	}
 }
 
+macro_rules! optry {
+	($e:expr) => {
+		match $e {
+			Some(d) => d,
+			None => return None,
+		}
+	};
+}
+macro_rules! decompress {
+	($e:expr) => {{
+		let mut gz_dec = GzDecoder::new($e.as_slice());
+		let mut r = Vec::new();
+		io::copy(&mut gz_dec, &mut r).unwrap();
+		r
+	}}
+}
+
+pub struct StorageFileHandle {
+	meta :CrateRecMetadata,
+}
+
+impl<S :Read + Seek + Write> CrateFileHandle<BlobCrateStorage<S>> for StorageFileHandle {
+	fn get_file_list(&self, _source :&mut BlobCrateStorage<S>) -> Vec<String> {
+		self.meta.get_file_list()
+	}
+	fn get_file(&self, source :&mut BlobCrateStorage<S>,
+			path :&str) -> Option<Vec<u8>> {
+		for &(ref hdr, ref d) in self.meta.entry_metadata.iter() {
+			let hdr = hdr_from_ptr(hdr);
+			let p = hdr.path().unwrap();
+			let s = p.to_str().unwrap();
+			if s != path {
+				continue;
+			}
+			let blob = optry!(optry!(source.b.get(d).ok()));
+			let decompressed = decompress!(blob);
+			return Some(decompressed);
+		}
+		None
+	}
+}
+
 impl<S :Read + Seek + Write> CrateSource for BlobCrateStorage<S> {
-	type CrateHandle = BlobCrateHandle;
+
+	type CrateHandle = StorageFileHandle;
 	fn get_crate_handle_nv(&mut self,
 			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
-		// TODO customize
-		if let Some(content) = self.get_crate_nv(name, version) {
-			Some(CrateHandle {
-				source : self,
-				crate_file_handle : BlobCrateHandle::new(content),
-			})
-		} else {
-			None
-		}
+		let s = CrateSpec {
+			name,
+			version,
+		};
+		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
+
+		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
+		let dmeta = decompress!(cmeta);
+		let meta = optry!(CrateRecMetadata::deserialize(dmeta.as_slice()).ok());
+
+		Some(CrateHandle {
+			source : self,
+			crate_file_handle : StorageFileHandle {
+				meta
+			},
+		})
 	}
 	fn get_crate(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
-		macro_rules! optry {
-			($e:expr) => {
-				match $e {
-					Some(d) => d,
-					None => return None,
-				}
-			};
-		}
-		macro_rules! decompress {
-			($e:expr) => {{
-				let mut gz_dec = GzDecoder::new($e.as_slice());
-				let mut r = Vec::new();
-				io::copy(&mut gz_dec, &mut r).unwrap();
-				r
-			}}
-		}
 		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
 
 		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
