@@ -1,10 +1,11 @@
-
 use super::blob_storage::BlobStorage;
 use super::hash_ctx::{HashCtx, Digest};
 use super::reconstruction::{CrateContentBlobs, CrateRecMetadata,
 	CrateRecMetaWithBlobs};
-use super::crate_storage::{CrateStorage, CrateSpec, CrateSource};
+use super::crate_storage::{CrateStorage, CrateSpec, CrateSource,
+	CrateHandle, BlobCrateHandle};
 
+use semver::Version;
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;
 use std::io::{self, Read, Seek, Write, Result as IoResult};
@@ -103,6 +104,19 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 }
 
 impl<S :Read + Seek + Write> CrateSource for BlobCrateStorage<S> {
+	type CrateHandle = BlobCrateHandle;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
+		// TODO customize
+		if let Some(content) = self.get_crate_nv(name, version) {
+			Some(CrateHandle {
+				source : self,
+				crate_file_handle : BlobCrateHandle::new(content),
+			})
+		} else {
+			None
+		}
+	}
 	fn get_crate(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
 		macro_rules! optry {
 			($e:expr) => {

@@ -1,10 +1,12 @@
 use semver::Version;
 use super::hash_ctx::{HashCtx, Digest};
 use super::registry::registry::{CrateIndexJson, AllCratesJson};
+use flate2::read::GzDecoder;
+use tar::Archive;
 use std::path::{Path, PathBuf};
 use std::cell::RefCell;
 use std::fs::File;
-use std::io;
+use std::io::{self, Read};
 use registry::registry::obtain_crate_name_path;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -19,7 +21,29 @@ impl CrateSpec {
 	}
 }
 
-pub trait CrateSource {
+pub struct CrateHandle<'a, S :CrateSource + 'a, C :CrateFileHandle<S>> {
+	pub source :&'a mut S,
+	pub crate_file_handle :C,
+}
+
+impl<'a, S :CrateSource + 'a, C :CrateFileHandle<S>> CrateHandle<'a, S, C> {
+	pub fn get_file_list(&mut self) -> Vec<String> {
+		self.crate_file_handle.get_file_list(&mut self.source)
+	}
+	pub fn get_file(&mut self, path :&str) -> Option<Vec<u8>> {
+		self.crate_file_handle.get_file(&mut self.source, path)
+	}
+}
+
+pub trait CrateFileHandle<S :CrateSource> {
+	fn get_file_list(&self, source :&mut S) -> Vec<String>;
+	fn get_file(&self, source :&mut S, path :&str) -> Option<Vec<u8>>;
+}
+
+pub trait CrateSource :Sized {
+	type CrateHandle :CrateFileHandle<Self>;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>>;
 	fn get_crate_nv(&mut self, name :String, version :Version) -> Option<Vec<u8>> {
 		self.get_crate(&CrateSpec {
 			name,
@@ -81,7 +105,83 @@ impl FileTreeStorage {
 	}
 }
 
+
+pub struct BlobCrateHandle {
+	content :Vec<u8>,
+}
+
+impl BlobCrateHandle {
+	pub fn new(content :Vec<u8>) -> Self {
+		BlobCrateHandle {
+			content
+		}
+	}
+}
+
+impl<S :CrateSource> CrateFileHandle<S> for BlobCrateHandle {
+	fn get_file_list(&self, source :&mut S) -> Vec<String> {
+		let f = self.content.as_slice();
+		let mut l = Vec::new();
+		let decoded = GzDecoder::new(f);
+		let mut archive = Archive::new(decoded);
+		for entry in archive.entries().unwrap() {
+			let mut entry = entry.unwrap();
+			let path = entry.path().unwrap();
+			let s :String = path.to_str().unwrap().to_owned();
+			l.push(s);
+		}
+		l
+	}
+	fn get_file(&self, _ :&mut S, path :&str) -> Option<Vec<u8>> {
+		extract_path_from_gz(self.content.as_slice(), path)
+	}
+}
+
+macro_rules! otry {
+	($v:expr) => {{
+		if let Some(v) = $v.ok() {
+			v
+		} else {
+			return None;
+		}
+	}};
+}
+
+fn extract_path_from_gz<T :Read>(r :T,
+		path_ex :&str) -> Option<Vec<u8>> {
+	let decoded = GzDecoder::new(r);
+	let mut archive = Archive::new(decoded);
+	for entry in otry!(archive.entries()) {
+		let mut entry = otry!(entry);
+		let is_path_ex = if let Some(path) = otry!(entry.path()).to_str() {
+			path_ex == path
+		} else {
+			false
+		};
+		if is_path_ex {
+			// Extract the file
+			let mut v = Vec::new();
+			otry!(entry.read_to_end(&mut v));
+			return Some(v);
+		}
+	}
+	return None;
+}
+
+
 impl CrateSource for FileTreeStorage {
+	type CrateHandle = BlobCrateHandle;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
+		if let Some(content) = self.get_crate_nv(name, version) {
+			Some(CrateHandle {
+				source : self,
+				crate_file_handle : BlobCrateHandle::new(content),
+			})
+		} else {
+			None
+		}
+	}
 	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
 		let crate_file_path = self.storage_base
 			.join(obtain_crate_name_path(&spec.name))
@@ -111,6 +211,18 @@ impl CacheStorage {
 }
 
 impl CrateSource for CacheStorage {
+	type CrateHandle = BlobCrateHandle;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
+		if let Some(content) = self.get_crate_nv(name, version) {
+			Some(CrateHandle {
+				source : self,
+				crate_file_handle : BlobCrateHandle::new(content),
+			})
+		} else {
+			None
+		}
+	}
 	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
 		let crate_file_path = self.storage_base
 			.join(spec.file_name());
