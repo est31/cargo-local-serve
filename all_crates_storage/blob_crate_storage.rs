@@ -49,12 +49,12 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 
 		let (bt_tx, bt_rx) = sync_channel(10);
 		let (pt_tx, pt_rx) = mpmc_queue(10);
-		for tid in 0 .. thread_count {
+		for _ in 0 .. thread_count {
 			let bt_tx = bt_tx.clone();
 			let pt_rx = pt_rx.clone();
 			thread::spawn(move || {
 				while let Ok(task) = pt_rx.recv() {
-					handle_parallel_task(task, |bt| bt_tx.send((tid, bt)).unwrap());
+					handle_parallel_task(task, |bt| bt_tx.send(bt).unwrap());
 				}
 			});
 		}
@@ -64,7 +64,7 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 		let mut blobs_to_store = HashSet::new();
 		loop {
 			let mut done_something = false;
-			if let Ok((tid, task)) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
+			if let Ok(task) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
 				handle_blocking_task(task, &mut self.b,
 					&mut blobs_to_store, |tsk| par_task_backlog.push(tsk));
 				done_something = true;

@@ -119,7 +119,7 @@ impl BlobCrateHandle {
 }
 
 impl<S :CrateSource> CrateFileHandle<S> for BlobCrateHandle {
-	fn get_file_list(&self, source :&mut S) -> Vec<String> {
+	fn get_file_list(&self, _source :&mut S) -> Vec<String> {
 		let f = self.content.as_slice();
 		let mut l = Vec::new();
 		let decoded = GzDecoder::new(f);

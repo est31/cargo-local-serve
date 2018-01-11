@@ -88,7 +88,7 @@ impl<S :Seek + Write> BlobStorage<S> {
 	pub fn insert(&mut self, digest :Digest, content :&[u8]) -> IoResult<bool> {
 		let e = self.blob_offsets.entry(digest);
 		match e {
-			Entry::Occupied(o) => return Ok(false),
+			Entry::Occupied(_) => return Ok(false),
 			Entry::Vacant(v) => v.insert(self.index_offset),
 		};
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
