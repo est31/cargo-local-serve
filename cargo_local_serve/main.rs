@@ -222,9 +222,9 @@ fn crate_files(req :&mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct AppConfigOpt {
-	template_dir :Option<String>,
+	site_dir :Option<String>,
 	listen_host :Option<String>,
 	listen_port :Option<u32>,
 }
@@ -233,7 +233,7 @@ struct AppConfigOpt {
 // is needed due to
 // https://github.com/serde-rs/serde/issues/368
 struct AppConfig {
-	template_dir :Option<String>,
+	site_dir :Option<String>,
 	listen_host :String,
 	listen_port :u32,
 }
@@ -241,7 +241,7 @@ struct AppConfig {
 impl AppConfig {
 	pub fn from_opt(o :AppConfigOpt) -> Self {
 		AppConfig {
-			template_dir : o.template_dir,
+			site_dir : o.site_dir,
 			listen_host : o.listen_host.unwrap_or("localhost".to_owned()),
 			listen_port : o.listen_port.unwrap_or(3000),
 		}
@@ -261,18 +261,20 @@ fn main() {
 			toml::from_str("").unwrap()
 		},
 	};
+	//println!("Config: {:?}", cfg_opt);
 	let cfg = AppConfig::from_opt(cfg_opt);
+	//println!("Config: {:?}", cfg);
 
 	let mut hbse = HandlebarsEngine::new();
 
 
-	let template_dir :&str = if let Some(d) = cfg.template_dir.as_ref() {
+	let site_dir :&str = if let Some(d) = cfg.site_dir.as_ref() {
 		d
 	} else {
 		const L :&[&str] = &[
-			"./site/templates/",
-			"cargo_local_serve/site/templates/",
-			"../cargo_local_serve/site/templates/",
+			"./site/",
+			"./cargo_local_serve/site/",
+			"../cargo_local_serve/site/",
 		];
 		'a :loop {
 			for p in L {
@@ -283,7 +285,12 @@ fn main() {
 			panic!("No valid directory could be found");
 		}
 	};
+
+	let template_dir = site_dir.to_owned() + "templates/";
+	let static_dir = site_dir.to_owned() + "/static/";
+
 	// add a directory source, all files with .hbs suffix will be loaded as template
+	let template_dir :&str = &template_dir;
 	hbse.add(Box::new(DirectorySource::new(template_dir, ".hbs")));
 
 	// load templates from all registered sources
@@ -299,12 +306,11 @@ fn main() {
 			}
 		)
 	);
-
 	let mut mount = Mount::new();
 	mount.mount("/reverse_dependencies", reverse_dependencies);
 	mount.mount("/versions", versions);
 	mount.mount("/crate", krate);
-	mount.mount("/static", Static::new(Path::new("./site/static"))
+	mount.mount("/static", Static::new(Path::new(&static_dir))
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
 	mount.mount("/search", search);
 	mount.mount("/files", crate_files);
@@ -314,6 +320,6 @@ fn main() {
 	chain.link_after(csp_hdr);
 	chain.link_after(GzMiddleware);
 	let host = format!("{}:{}", cfg.listen_host, cfg.listen_port);
-	println!("Server running at http://{}", host);
+	println!("Server running at http://{}/", host);
 	Iron::new(chain).http(&host).unwrap();
 }
