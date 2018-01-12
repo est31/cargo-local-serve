@@ -33,6 +33,8 @@ use iron::headers::Referer;
 
 use std::time::Duration;
 use std::path::Path;
+use std::fs::File;
+use std::io::Read;
 
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -220,13 +222,69 @@ fn crate_files(req :&mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+#[derive(Deserialize)]
+struct AppConfigOpt {
+	template_dir :Option<String>,
+	listen_host :Option<String>,
+	listen_port :Option<u32>,
+}
+
+// This construct with AppConfig and AppConfigOpt
+// is needed due to
+// https://github.com/serde-rs/serde/issues/368
+struct AppConfig {
+	template_dir :Option<String>,
+	listen_host :String,
+	listen_port :u32,
+}
+
+impl AppConfig {
+	pub fn from_opt(o :AppConfigOpt) -> Self {
+		AppConfig {
+			template_dir : o.template_dir,
+			listen_host : o.listen_host.unwrap_or("localhost".to_owned()),
+			listen_port : o.listen_port.unwrap_or(3000),
+		}
+	}
+}
+
 fn main() {
 	env_logger::init().unwrap();
 
+	let cfg_opt :AppConfigOpt = match File::open("config.toml") {
+		Ok(mut f) => {
+			let mut s = String::new();
+			f.read_to_string(&mut s).unwrap();
+			toml::from_str(&s).unwrap()
+		},
+		Err(_) => {
+			toml::from_str("").unwrap()
+		},
+	};
+	let cfg = AppConfig::from_opt(cfg_opt);
+
 	let mut hbse = HandlebarsEngine::new();
 
+
+	let template_dir :&str = if let Some(d) = cfg.template_dir.as_ref() {
+		d
+	} else {
+		const L :&[&str] = &[
+			"./site/templates/",
+			"cargo_local_serve/site/templates/",
+			"../cargo_local_serve/site/templates/",
+		];
+		'a :loop {
+			for p in L {
+				if Path::new(&p).exists() {
+					break 'a p;
+				}
+			}
+			panic!("No valid directory could be found");
+		}
+	};
 	// add a directory source, all files with .hbs suffix will be loaded as template
-	hbse.add(Box::new(DirectorySource::new("./site/templates/", ".hbs")));
+	hbse.add(Box::new(DirectorySource::new(template_dir, ".hbs")));
 
 	// load templates from all registered sources
 	if let Err(r) = hbse.reload() {
@@ -255,6 +313,7 @@ fn main() {
 	chain.link_after(hbse);
 	chain.link_after(csp_hdr);
 	chain.link_after(GzMiddleware);
-	println!("Server running at http://localhost:3000/");
-	Iron::new(chain).http("localhost:3000").unwrap();
+	let host = format!("{}:{}", cfg.listen_host, cfg.listen_port);
+	println!("Server running at http://{}", host);
+	Iron::new(chain).http(&host).unwrap();
 }
