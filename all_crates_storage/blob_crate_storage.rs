@@ -124,7 +124,7 @@ pub struct StorageFileHandle {
 	meta :CrateRecMetadata,
 }
 
-impl<S :Read + Seek + Write> CrateFileHandle<BlobCrateStorage<S>> for StorageFileHandle {
+impl<S :Read + Seek> CrateFileHandle<BlobCrateStorage<S>> for StorageFileHandle {
 	fn get_file_list(&self, _source :&mut BlobCrateStorage<S>) -> Vec<String> {
 		self.meta.get_file_list()
 	}
@@ -145,7 +145,7 @@ impl<S :Read + Seek + Write> CrateFileHandle<BlobCrateStorage<S>> for StorageFil
 	}
 }
 
-impl<S :Read + Seek + Write> CrateSource for BlobCrateStorage<S> {
+impl<S :Read + Seek> CrateSource for BlobCrateStorage<S> {
 
 	type CrateHandle = StorageFileHandle;
 	fn get_crate_handle_nv(&mut self,
