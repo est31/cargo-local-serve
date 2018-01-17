@@ -16,11 +16,12 @@ The `crates.io` team has publicly stated that the only goal of the codebase is t
 Some little demo for usage:
 
 1. clone
-2. do `cargo run --bin cargo-local-serve` inside the repo
+2. do `cargo run -p cargo-local-serve` inside the repo
 3. navigate your browser to some random crate, e.g. `http://localhost:3000/crate/winapi` or `http://localhost:3000/crate/futures`
 
 ## TODO
 
+* Improve compression of the blob storage by a) creating a graph of all blobs in relation to each other. How two blobs relate is an interesting question, the most simple way is to let files with the same name relate to each other iff they are similar b) for each connected component, creating a minimum spanning tree c) splitting up the trees until some okay-ish size per tree is reached (maybe like up to 50 blobs per unit??) d) emitting each such created component into one dedicated superblob that contains the set of blobs
 * Implement global scoring of crates by most depended on (directly), most depended on (transitive closure), IDK what else
 * Obtain list of mirrored versions of a crate
 * Add site for when the given version is not mirrored
@@ -34,6 +35,7 @@ Some little demo for usage:
 * Render the markdown using pulldown-cmark
 * Source code formatting inside that rendering using syntect
 * Search feature
+* Creation of blob crate storage files that can store the entirety of crates.io
 
 ## Design principles
 
