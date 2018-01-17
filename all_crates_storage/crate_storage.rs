@@ -1,12 +1,14 @@
 use semver::Version;
 use super::hash_ctx::{HashCtx, Digest};
 use super::registry::registry::{CrateIndexJson, AllCratesJson};
+use super::blob_crate_storage::{BlobCrateStorage, StorageFileHandle};
 use flate2::read::GzDecoder;
 use tar::Archive;
 use std::path::{Path, PathBuf};
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Seek};
+use std::ops::Deref;
 use registry::registry::obtain_crate_name_path;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -38,6 +40,15 @@ impl<'a, S :CrateSource + 'a, C :CrateFileHandle<S>> CrateHandle<'a, S, C> {
 pub trait CrateFileHandle<S :CrateSource> {
 	fn get_file_list(&self, source :&mut S) -> Vec<String>;
 	fn get_file(&self, source :&mut S, path :&str) -> Option<Vec<u8>>;
+}
+
+impl<S :CrateSource> CrateFileHandle<S> for Box<CrateFileHandle<S>> {
+	fn get_file_list(&self, source :&mut S) -> Vec<String> {
+		<Box<_> as Deref>::deref(self).get_file_list(source)
+	}
+	fn get_file(&self, source :&mut S, path :&str) -> Option<Vec<u8>> {
+		<Box<_> as Deref>::deref(self).get_file(source, path)
+	}
 }
 
 pub trait CrateSource :Sized {
@@ -90,6 +101,104 @@ pub trait CrateStorage {
 				})
 			});
 		self.store_parallel_iter(thread_count, crate_iter);
+	}
+}
+
+pub enum DynCrateSource<S :Read + Seek> {
+	FileTreeStorage(FileTreeStorage),
+	CacheStorage(CacheStorage),
+	BlobCrateStorage(BlobCrateStorage<S>),
+}
+
+pub enum DynCrateHandle {
+	BlobCrateHandle(BlobCrateHandle),
+	StorageFileHandle(StorageFileHandle),
+}
+
+impl DynCrateHandle {
+	fn blob(&self) -> Option<&BlobCrateHandle> {
+		match self {
+			&DynCrateHandle::BlobCrateHandle(ref h) => Some(h),
+			_ => None,
+		}
+	}
+	fn storage(&self) -> Option<&StorageFileHandle> {
+		match self {
+			&DynCrateHandle::StorageFileHandle(ref h) => Some(h),
+			_ => None,
+		}
+	}
+}
+
+impl<S :Read + Seek> CrateSource for DynCrateSource<S> {
+	type CrateHandle = DynCrateHandle;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
+		let ch = match self {
+			&mut DynCrateSource::FileTreeStorage(ref mut s) => {
+				s.get_crate_handle_nv(name, version)
+					.map(|h| DynCrateHandle::BlobCrateHandle(h.crate_file_handle))
+			},
+			&mut DynCrateSource::CacheStorage(ref mut s) => {
+				s.get_crate_handle_nv(name, version)
+					.map(|h| DynCrateHandle::BlobCrateHandle(h.crate_file_handle))
+			},
+			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
+				s.get_crate_handle_nv(name, version)
+					.map(|h| DynCrateHandle::StorageFileHandle(h.crate_file_handle))
+			},
+		};
+		if let Some(ch) = ch {
+			Some(CrateHandle {
+				source : self,
+				crate_file_handle : ch,
+			})
+		} else {
+			None
+		}
+	}
+	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
+		match self {
+			&mut DynCrateSource::FileTreeStorage(ref mut s) => {
+				s.get_crate(spec)
+			},
+			&mut DynCrateSource::CacheStorage(ref mut s) => {
+				s.get_crate(spec)
+			},
+			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
+				s.get_crate(spec)
+			},
+		}
+	}
+}
+
+impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle {
+	fn get_file_list(&self, source :&mut DynCrateSource<S>) -> Vec<String> {
+		match source {
+			&mut DynCrateSource::FileTreeStorage(ref mut s) => {
+				self.blob().unwrap().get_file_list(s)
+			},
+			&mut DynCrateSource::CacheStorage(ref mut s) => {
+				self.blob().unwrap().get_file_list(s)
+			},
+			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
+				self.storage().unwrap().get_file_list(s)
+			},
+		}
+	}
+	fn get_file(&self, source :&mut DynCrateSource<S>,
+			path :&str) -> Option<Vec<u8>> {
+		match source {
+			&mut DynCrateSource::FileTreeStorage(ref mut s) => {
+				self.blob().unwrap().get_file(s, path)
+			},
+			&mut DynCrateSource::CacheStorage(ref mut s) => {
+				self.blob().unwrap().get_file(s, path)
+			},
+			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
+				self.storage().unwrap().get_file(s, path)
+			},
+		}
 	}
 }
 

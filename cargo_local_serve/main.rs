@@ -35,6 +35,8 @@ use std::time::Duration;
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::cell::RefCell;
+use std::sync::RwLock;
 
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -47,6 +49,8 @@ use urlencoded::UrlEncodedQuery;
 
 use all_crates_storage::registry::registry::Registry;
 use all_crates_storage::registry::statistics::{compute_crate_statistics, CrateStats};
+use all_crates_storage::crate_storage::{DynCrateSource, FileTreeStorage};
+use all_crates_storage::blob_crate_storage::BlobCrateStorage;
 
 mod registry_data;
 mod markdown_render;
@@ -104,7 +108,14 @@ lazy_static! {
 		Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
 	static ref CRATE_STATS :CrateStats =
 		compute_crate_statistics(&REGISTRY.get_all_crates_json().unwrap());
+	static ref CRATE_SOURCE_GEN :RwLock<Option<Box<Fn() -> DynCrateSource<File> + Send + Sync>>> = RwLock::new(None);
 }
+
+thread_local!(static CRATE_SOURCE :RefCell<DynCrateSource<File>> = {
+	let csg = CRATE_SOURCE_GEN.read().unwrap();
+	let dcs = csg.as_ref().unwrap()();
+	RefCell::new(dcs)
+});
 
 header! { (ContentSecurityPolicy, "Content-Security-Policy") => [String] }
 
@@ -142,14 +153,16 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	let name = path[0];
 	let opt_version = path.get(1).map(|v| *v);
 	let mut resp = Response::new();
-	let crate_data = registry_data::get_crate_data(name.to_string(),
-		&REGISTRY, &mut REGISTRY.get_cache_storage(), opt_version);
-	if let Some(data) = crate_data {
-		resp.set_mut(Template::new("crate", data))
-			.set_mut(status::Ok);
-	} else {
-		resp.set_mut(status::NotFound);
-	}
+	CRATE_SOURCE.with(|s| {
+		let crate_data = registry_data::get_crate_data(name.to_string(),
+			&REGISTRY, &mut *s.borrow_mut(), opt_version);
+		if let Some(data) = crate_data {
+			resp.set_mut(Template::new("crate", data))
+				.set_mut(status::Ok);
+		} else {
+			resp.set_mut(status::NotFound);
+		}
+	});
 	Ok(resp)
 }
 
@@ -211,15 +224,29 @@ fn crate_files(req :&mut Request) -> IronResult<Response> {
 	let version = path[1];
 	let mut resp = Response::new();
 
-	let crate_file_data = registry_data::get_crate_file_data(
-		&mut REGISTRY.get_cache_storage(), name, version, &path[2..]);
-	let template = match crate_file_data {
-		FileListing(data) => Template::new("file-listing", data),
-		FileContent(data) => Template::new("file-content", data),
-	};
-	resp.set_mut(template)
-		.set_mut(status::Ok);
+	CRATE_SOURCE.with(|s| {
+		let crate_file_data = registry_data::get_crate_file_data(
+			&mut *s.borrow_mut(), name, version, &path[2..]);
+		let template = match crate_file_data {
+			FileListing(data) => Template::new("file-listing", data),
+			FileContent(data) => Template::new("file-content", data),
+		};
+		resp.set_mut(template)
+			.set_mut(status::Ok);
+	});
 	Ok(resp)
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "kind")]
+enum CrateSourceCfg {
+	Cache,
+	ArchiveTree {
+		path :Option<String>,
+	},
+	StorageFile {
+		path :Option<String>,
+	},
 }
 
 #[derive(Deserialize, Debug)]
@@ -227,6 +254,7 @@ struct AppConfigOpt {
 	site_dir :Option<String>,
 	listen_host :Option<String>,
 	listen_port :Option<u32>,
+	source :Option<CrateSourceCfg>,
 }
 
 // This construct with AppConfig and AppConfigOpt
@@ -236,6 +264,7 @@ struct AppConfig {
 	site_dir :Option<String>,
 	listen_host :String,
 	listen_port :u32,
+	source :CrateSourceCfg,
 }
 
 impl AppConfig {
@@ -244,6 +273,7 @@ impl AppConfig {
 			site_dir : o.site_dir,
 			listen_host : o.listen_host.unwrap_or("localhost".to_owned()),
 			listen_port : o.listen_port.unwrap_or(3000),
+			source : o.source.unwrap_or(CrateSourceCfg::Cache),
 		}
 	}
 }
@@ -288,6 +318,39 @@ fn main() {
 
 	let template_dir = site_dir.to_owned() + "templates/";
 	let static_dir = site_dir.to_owned() + "/static/";
+
+	{
+		let mut csg = CRATE_SOURCE_GEN.write().unwrap();
+		let b = match cfg.source {
+			CrateSourceCfg::Cache => Box::new(|| {
+				DynCrateSource::CacheStorage(REGISTRY.get_cache_storage())
+			}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>,
+			CrateSourceCfg::ArchiveTree { path } => {
+				let p = if let Some(p) = path {
+					p
+				} else {
+					String::from("crate-archives")
+				};
+				Box::new(move || {
+					DynCrateSource::FileTreeStorage(FileTreeStorage::new(Path::new(&p)))
+				}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>
+			},
+			CrateSourceCfg::StorageFile { path } => {
+				let p = if let Some(p) = path {
+					p
+				} else {
+					String::from("crate-constr-archives/crate_storage")
+				};
+				Box::new(move || {
+					let f = File::open(&p).unwrap();
+					let bcs = BlobCrateStorage::new(f).unwrap();
+					let dcs :DynCrateSource<File> =  DynCrateSource::BlobCrateStorage(bcs);
+					dcs
+				}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>
+			},
+		};
+		*csg = Some(b);
+	}
 
 	// add a directory source, all files with .hbs suffix will be loaded as template
 	let template_dir :&str = &template_dir;
