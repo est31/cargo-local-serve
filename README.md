@@ -21,6 +21,7 @@ Some little demo for usage:
 
 ## TODO
 
+* Proper error handling. Right now we are using unwrap and panics everywhere or cast stuff to Option :)
 * Improve compression of the blob storage by a) creating a graph of all blobs in relation to each other. How two blobs relate is an interesting question, the most simple way is to let files with the same name relate to each other iff they are similar b) for each connected component, creating a minimum spanning tree c) splitting up the trees until some okay-ish size per tree is reached (maybe like up to 50 blobs per unit??) d) emitting each such created component into one dedicated superblob that contains the set of blobs
 * Implement global scoring of crates by most depended on (directly), most depended on (transitive closure), IDK what else
 * Obtain list of mirrored versions of a crate
