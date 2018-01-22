@@ -16,12 +16,12 @@ pub struct BlobStorage<S> {
 	index_offset :u64,
 }
 
-fn write_delim_byte_slice<W :Write>(mut wtr :W, sl :&[u8]) -> IoResult<()> {
+pub(crate) fn write_delim_byte_slice<W :Write>(mut wtr :W, sl :&[u8]) -> IoResult<()> {
 	try!(wtr.write_u64::<BigEndian>(sl.len() as u64));
 	try!(wtr.write(sl));
 	Ok(())
 }
-fn read_delim_byte_slice<R :Read>(mut rdr :R) -> IoResult<Vec<u8>> {
+pub(crate) fn read_delim_byte_slice<R :Read>(mut rdr :R) -> IoResult<Vec<u8>> {
 	let len = try!(rdr.read_u64::<BigEndian>());
 	let mut res = vec![0; len as usize];
 	try!(rdr.read_exact(&mut res));

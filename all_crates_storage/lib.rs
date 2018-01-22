@@ -14,6 +14,7 @@ extern crate flate2;
 extern crate tar;
 extern crate multiqueue;
 extern crate hex;
+extern crate difference;
 
 pub mod registry;
 pub mod crate_storage;
@@ -21,6 +22,7 @@ pub mod blob_storage;
 pub mod blob_crate_storage;
 pub mod hash_ctx;
 pub mod reconstruction;
+pub mod diff;
 
 #[cfg(test)]
 mod blob_storage_test;

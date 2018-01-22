@@ -23,6 +23,10 @@ path = "bin/download-all-crates.rs"
 name = "create-crate-storage"
 path = "bin/create-crate-storage.rs"
 
+[[bin]]
+name = "diff"
+path = "bin/diff.rs"
+
 [dependencies]
 
 # Needed by the binaries
@@ -44,3 +48,4 @@ ring = "0.13.0-alpha"
 byteorder = "1.0.0"
 multiqueue = "0.3"
 hex = "0.3.1"
+difference = {git = "https://github.com/johannhof/difference.rs/" }
