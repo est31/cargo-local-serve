@@ -214,7 +214,7 @@ fn main() {
 		}
 	}
 	let mut hashes = h_map.into_iter().collect::<Vec<_>>();
-	hashes.sort_by_key((|&(_, ref l)| l.0.len() as u64 * l.1));
+	hashes.sort_by_key(|&(_, ref l)| l.0.len() as u64 * l.1);
 	hashes.reverse();
 
 	println!("File count: {}", file_count);
