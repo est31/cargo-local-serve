@@ -41,11 +41,11 @@ serde_derive = "1.0.0"
 flate2 = "=1.0.1"
 tar = "0.4"
 semver = { version = "0.9", features = ["serde"] }
-git2 = "0.6"
+git2 = "0.7"
 failure = "0.1.0"
 failure_derive = "0.1.0"
 ring = "0.13.0-alpha"
 byteorder = "1.0.0"
 multiqueue = "0.3"
 hex = "0.3.1"
-difference = {git = "https://github.com/johannhof/difference.rs/" }
+difference = "2.0"
