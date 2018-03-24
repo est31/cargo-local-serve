@@ -279,7 +279,7 @@ impl AppConfig {
 }
 
 fn main() {
-	env_logger::init().unwrap();
+	env_logger::init();
 
 	let cfg_opt :AppConfigOpt = match File::open("config.toml") {
 		Ok(mut f) => {
