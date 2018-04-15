@@ -90,6 +90,7 @@ fn main() {
 				&grepper, &storage_base);
 		});
 	}
+	std::mem::drop(tx);
 	while let Ok((ctr, tc, s)) = rx.recv() {
 		println!("[{}/{}] {}", ctr, tc, s);
 	}
