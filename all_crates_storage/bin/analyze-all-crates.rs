@@ -177,6 +177,7 @@ fn main() {
 				&storage_base);
 		});
 	}
+	std::mem::drop(tx);
 	let mut h_map = HashMap::new();
 	let mut file_count = 0;
 	let mut threads_running = thread_count;
