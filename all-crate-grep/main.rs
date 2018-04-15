@@ -44,16 +44,16 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				},
 			};
 
-			let file_list = fh.get_file_list();
 			let mut match_found = false;
-			for file_path in file_list.iter() {
-				let f = fh.get_file(file_path).expect("Path not found in crate file");
-				let mut m = Match::new();
-				if grepper.read_match(&mut m, &f, 0) {
-					pln!("Match found in {} v {} file {}", name, v.version, file_path);
-					match_found = true;
+			fh.crate_file_handle.map_all_files(|file_path, file| {
+				if let (Some(file_path), Some(file)) = (file_path, file) {
+					let mut m = Match::new();
+					if grepper.read_match(&mut m, &file, 0) {
+						pln!("Match found in {} v {} file {}", name, v.version, file_path);
+						match_found = true;
+					}
 				}
-			}
+			});
 			if !match_found {
 				pln!("No match in {} v {}", name, v.version);
 			}

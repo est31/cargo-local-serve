@@ -225,6 +225,31 @@ impl BlobCrateHandle {
 			content
 		}
 	}
+	pub fn map_all_files<F :FnMut(Option<String>, Option<Vec<u8>>)>(&self, mut f :F) {
+		let r = self.content.as_slice();
+		let decoded = GzDecoder::new(r);
+		let mut archive = Archive::new(decoded);
+		for entry in archive.entries().unwrap() {
+			let mut entry = if let Ok(entry) = entry {
+				entry
+			} else {
+				continue;
+			};
+			let path :Option<String> = entry.path().ok()
+				.and_then(|s| if let Some(s) = s.to_str() {
+					Some(s.to_owned())
+				} else {
+					None
+				});
+			let mut v = Vec::new();
+			let v = if entry.read_to_end(&mut v).is_ok() {
+				Some(v)
+			} else {
+				None
+			};
+			f(path, v);
+		}
+	}
 }
 
 impl<S :CrateSource> CrateFileHandle<S> for BlobCrateHandle {
