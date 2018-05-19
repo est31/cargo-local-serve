@@ -1,0 +1,14 @@
+#site_dir = "site"
+#listen_host = "localhost"
+#listen_port = 3000
+
+#[source]
+#kind = "Cache"
+
+#[source]
+#kind = "ArchiveTree"
+#path = "/path/to/ArchiveTree"
+
+#[source]
+#kind = "StorageFile"
+#path = "/path/to/StorageFile"
