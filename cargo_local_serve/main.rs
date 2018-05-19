@@ -47,10 +47,13 @@ use mount::Mount;
 
 use urlencoded::UrlEncodedQuery;
 
+use semver::Version as SvVersion;
+
 use all_crates_storage::registry::registry::Registry;
 use all_crates_storage::registry::statistics::{compute_crate_statistics, CrateStats};
-use all_crates_storage::crate_storage::{DynCrateSource, FileTreeStorage};
+use all_crates_storage::crate_storage::{DynCrateSource, FileTreeStorage, CrateSource};
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
+use all_crates_storage::crate_storage::CrateSpec;
 
 mod registry_data;
 mod markdown_render;
@@ -61,7 +64,11 @@ mod syntect_format;
 pub struct GzMiddleware;
 
 impl AfterMiddleware for GzMiddleware {
-	fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
+	fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
+		if req.url.path()[0] == "api" {
+			// Don't compress download responses
+			return Ok(resp);
+		}
 
 		let compressed_bytes = resp.body.as_mut().map(|b| {
 			let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
@@ -75,7 +82,6 @@ impl AfterMiddleware for GzMiddleware {
 			resp.headers.set(ContentEncoding(vec![Encoding::Gzip]));
 			resp.set_mut(b);
 		}
-
 		Ok(resp)
 	}
 }
@@ -237,6 +243,32 @@ fn crate_files(req :&mut Request) -> IronResult<Response> {
 	Ok(resp)
 }
 
+fn api_crate(req :&mut Request) -> IronResult<Response> {
+
+	println!("{:?}", req.url.path());
+	let path = req.url.path();
+	let name = path[0];
+	let version = path[1];
+	let mut resp = Response::new();
+
+	let sv_version = SvVersion::parse(version).unwrap();
+	let crate_spec = CrateSpec {
+		name : name.to_string(),
+		version : sv_version,
+	};
+	CRATE_SOURCE.with(|s| {
+		let s = &mut *s.borrow_mut();
+		let crate_opt = s.get_crate(&crate_spec);
+		if let Some(crate_data) = crate_opt {
+			resp.set_mut(crate_data)
+				.set_mut(status::Ok);
+		} else {
+			resp.set_mut(status::NotFound);
+		}
+	});
+	Ok(resp)
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(tag = "kind")]
 enum CrateSourceCfg {
@@ -377,6 +409,7 @@ fn main() {
 		.cache(Duration::from_secs(30 * 24 * 60 * 60)));
 	mount.mount("/search", search);
 	mount.mount("/files", crate_files);
+	mount.mount("/api/v1/crates", api_crate);
 	mount.mount("/", index);
 	let mut chain = Chain::new(FallbackHandler(Box::new(mount)));
 	chain.link_after(hbse);
