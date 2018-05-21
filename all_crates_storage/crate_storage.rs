@@ -202,6 +202,74 @@ impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle {
 	}
 }
 
+pub struct OverlayCrateSource<S :CrateSource, T :CrateSource>(S, T);
+
+impl<S :CrateSource, T :CrateSource> OverlayCrateSource<S, T> {
+	pub fn new(default :S, fallback :T) -> Self {
+		OverlayCrateSource(default, fallback)
+	}
+	fn get_overlay_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<OverlayCrateHandle<S, T>> {
+		if let Some(v) = self.0.get_crate_handle_nv(name.clone(), version.clone()) {
+			return Some(OverlayCrateHandle::DefaultFound(v.crate_file_handle));
+		}
+		if let Some(v) = self.1.get_crate_handle_nv(name, version) {
+			return Some(OverlayCrateHandle::FallbackFound(v.crate_file_handle));
+		}
+		return None;
+	}
+}
+
+impl<S :CrateSource, T :CrateSource> CrateSource for OverlayCrateSource<S, T> {
+	type CrateHandle = OverlayCrateHandle<S, T>;
+	fn get_crate_handle_nv(&mut self,
+			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
+		if let Some(ch) = self.get_overlay_crate_handle_nv(name, version) {
+			Some(CrateHandle {
+				source : self,
+				crate_file_handle : ch,
+			})
+		} else {
+			None
+		}
+	}
+	fn get_crate(&mut self, spec :&CrateSpec) -> Option<Vec<u8>> {
+		if let Some(v) = self.0.get_crate(spec) {
+			return Some(v);
+		}
+		return self.1.get_crate(spec);
+	}
+}
+
+pub enum OverlayCrateHandle<D :CrateSource, F :CrateSource> {
+	DefaultFound(D::CrateHandle),
+	FallbackFound(F::CrateHandle),
+}
+
+impl<S :CrateSource, T: CrateSource> CrateFileHandle<OverlayCrateSource<S, T>> for OverlayCrateHandle<S, T> {
+	fn get_file_list(&self, source :&mut OverlayCrateSource<S, T>) -> Vec<String> {
+		match self {
+			&OverlayCrateHandle::DefaultFound(ref s) => {
+				s.get_file_list(&mut source.0)
+			},
+			&OverlayCrateHandle::FallbackFound(ref s) => {
+				s.get_file_list(&mut source.1)
+			},
+		}
+	}
+	fn get_file(&self, source :&mut OverlayCrateSource<S, T>,
+			path :&str) -> Option<Vec<u8>> {
+		match self {
+			&OverlayCrateHandle::DefaultFound(ref s) => {
+				s.get_file(&mut source.0, path)
+			},
+			&OverlayCrateHandle::FallbackFound(ref s) => {
+				s.get_file(&mut source.1, path)
+			},
+		}
+	}
+}
+
 pub struct FileTreeStorage {
 	storage_base :PathBuf,
 }
