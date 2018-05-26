@@ -108,14 +108,16 @@ pub enum DynCrateSource<S :Read + Seek> {
 	FileTreeStorage(FileTreeStorage),
 	CacheStorage(CacheStorage),
 	BlobCrateStorage(BlobCrateStorage<S>),
+	OverlayCrateSource(Box<OverlayCrateSource<DynCrateSource<S>, DynCrateSource<S>>>),
 }
 
-pub enum DynCrateHandle {
+pub enum DynCrateHandle<S :Read + Seek> {
 	BlobCrateHandle(BlobCrateHandle),
 	StorageFileHandle(StorageFileHandle),
+	OverlayCrateHandle(Box<OverlayCrateHandle<DynCrateSource<S>, DynCrateSource<S>>>),
 }
 
-impl DynCrateHandle {
+impl<S :Read + Seek> DynCrateHandle<S> {
 	fn blob(&self) -> Option<&BlobCrateHandle> {
 		match self {
 			&DynCrateHandle::BlobCrateHandle(ref h) => Some(h),
@@ -128,10 +130,16 @@ impl DynCrateHandle {
 			_ => None,
 		}
 	}
+	fn overlay(&self) -> Option<&OverlayCrateHandle<DynCrateSource<S>, DynCrateSource<S>>> {
+		match self {
+			&DynCrateHandle::OverlayCrateHandle(ref h) => Some(h),
+			_ => None,
+		}
+	}
 }
 
 impl<S :Read + Seek> CrateSource for DynCrateSource<S> {
-	type CrateHandle = DynCrateHandle;
+	type CrateHandle = DynCrateHandle<S>;
 	fn get_crate_handle_nv(&mut self,
 			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>> {
 		let ch = match self {
@@ -146,6 +154,10 @@ impl<S :Read + Seek> CrateSource for DynCrateSource<S> {
 			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
 				s.get_crate_handle_nv(name, version)
 					.map(|h| DynCrateHandle::StorageFileHandle(h.crate_file_handle))
+			},
+			&mut DynCrateSource::OverlayCrateSource(ref mut s) => {
+				s.get_crate_handle_nv(name, version)
+					.map(|h| DynCrateHandle::OverlayCrateHandle(Box::new(h.crate_file_handle)))
 			},
 		};
 		if let Some(ch) = ch {
@@ -168,11 +180,14 @@ impl<S :Read + Seek> CrateSource for DynCrateSource<S> {
 			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
 				s.get_crate(spec)
 			},
+			&mut DynCrateSource::OverlayCrateSource(ref mut s) => {
+				s.get_crate(spec)
+			},
 		}
 	}
 }
 
-impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle {
+impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle<S> {
 	fn get_file_list(&self, source :&mut DynCrateSource<S>) -> Vec<String> {
 		match source {
 			&mut DynCrateSource::FileTreeStorage(ref mut s) => {
@@ -183,6 +198,9 @@ impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle {
 			},
 			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
 				self.storage().unwrap().get_file_list(s)
+			},
+			&mut DynCrateSource::OverlayCrateSource(ref mut s) => {
+				self.overlay().unwrap().get_file_list(s)
 			},
 		}
 	}
@@ -197,6 +215,9 @@ impl<S :Read + Seek> CrateFileHandle<DynCrateSource<S>> for DynCrateHandle {
 			},
 			&mut DynCrateSource::BlobCrateStorage(ref mut s) => {
 				self.storage().unwrap().get_file(s, path)
+			},
+			&mut DynCrateSource::OverlayCrateSource(ref mut s) => {
+				self.overlay().unwrap().get_file(s, path)
 			},
 		}
 	}
