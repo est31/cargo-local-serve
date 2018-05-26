@@ -25,6 +25,9 @@ use all_crates_storage::hash_ctx::HashCtx;
 /// the API about a crate via the usual request:
 /// https://crates.io/api/v1/crates/{cratename}
 ///
+/// Also, it is the URL scheme that cargo itself uses to download
+/// a crate.
+///
 /// But we don't want to fake download statistics, so we directly
 /// take the cloudfront URL.
 /// The stable URL is simply just a redirect to the cloudfront URL.
