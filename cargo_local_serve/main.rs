@@ -24,7 +24,7 @@ extern crate all_crates_storage;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
-use iron::headers::{ContentEncoding, Encoding};
+use iron::headers::{ContentEncoding, Encoding, Location};
 use hbs::{Template, HandlebarsEngine, DirectorySource};
 use hbs::handlebars::{Handlebars, RenderContext, RenderError, Helper};
 use serde_json::value::{Value, Map};
@@ -216,9 +216,14 @@ fn search(req :&mut Request) -> IronResult<Response> {
 	let mut resp = Response::new();
 
 	let hmap = req.get_ref::<UrlEncodedQuery>().unwrap();
-	let crate_data = registry_data::get_search_result_data(&CRATE_STATS, hmap);
-	resp.set_mut(Template::new("search", crate_data))
-		.set_mut(status::Ok);
+	let (crate_data, maybe_only_one) = registry_data::get_search_result_data(&CRATE_STATS, hmap);
+	if let Some(only_crate_name) = maybe_only_one {
+		resp.headers.set(Location(format!("/crate/{}", only_crate_name)));
+		resp.set_mut(status::Found);
+	} else {
+		resp.set_mut(Template::new("search", crate_data))
+			.set_mut(status::Ok);
+	}
 	Ok(resp)
 }
 

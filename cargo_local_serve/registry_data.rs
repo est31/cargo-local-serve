@@ -358,7 +358,7 @@ pub fn get_index_data(stats :&CrateStats) -> Map<String, Value> {
 }
 
 pub fn get_search_result_data(stats :&CrateStats, query_map :&QueryMap)
-		-> Map<String, Value> {
+		-> (Map<String, Value>, Option<String>) {
 
 	let search_term = (&query_map["q"][0]).clone(); // TODO add error handling
 
@@ -388,7 +388,14 @@ pub fn get_search_result_data(stats :&CrateStats, query_map :&QueryMap)
 	};
 	data.insert("c".to_string(), to_json(&results));
 
-	data
+	let maybe_only_one = if results.results_length == 1 {
+		let only_crate = results.results.iter().next().unwrap();
+		Some(only_crate.name.clone())
+	} else {
+		None
+	};
+
+	(data, maybe_only_one)
 }
 
 pub enum CrateFileData {
