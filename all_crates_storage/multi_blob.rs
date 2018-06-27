@@ -13,7 +13,6 @@ use std::io::Result as IoResult;
 use std::io::{Read, Write};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use super::blob_storage::{write_delim_byte_slice, read_delim_byte_slice};
-use std::collections::HashMap;
 
 pub struct MultiBlob {
 	root_blob :(Digest, String),
@@ -77,23 +76,4 @@ impl MultiBlob {
 		}
 		Ok(())
 	}
-}
-
-// first step: classifying each blob based on crate name and file name.
-//             If a blob has multiple file names, we classify it regardlessly.
-// second step: putting all blobs that are alone (no other blobs in the same class)
-//              into the BlobStorage.
-// third step: creation of a tree for each class by performing dijkstra on the (initially fully connected) graph.
-// fourth step: generation of the MultiBlob objects
-// fifth step: serialization of the MultiBlob objects, putting them into the BlobStorage
-
-pub struct MultiBlobClass {
-	cratename_path_list :Vec<(String, String)>,
-	blob_list :Vec<Digest>,
-}
-
-pub struct MultiBlobClassifier {
-	classes :Vec<MultiBlobClass>,
-	digest_to_class_index :HashMap<Digest, usize>,
-	cratename_path_to_class_index :HashMap<(String, String), usize>,
 }

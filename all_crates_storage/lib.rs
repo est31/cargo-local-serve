@@ -15,11 +15,13 @@ extern crate tar;
 extern crate multiqueue;
 extern crate hex;
 extern crate difference;
+extern crate petgraph;
 
 pub mod registry;
 pub mod crate_storage;
 pub mod blob_storage;
 pub mod blob_crate_storage;
+pub mod multi_blob_crate_storage;
 pub mod hash_ctx;
 pub mod reconstruction;
 pub mod diff;

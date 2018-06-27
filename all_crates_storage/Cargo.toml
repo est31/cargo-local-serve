@@ -24,6 +24,10 @@ name = "create-crate-storage"
 path = "bin/create-crate-storage.rs"
 
 [[bin]]
+name = "create-mb-crate-storage"
+path = "bin/create-mb-crate-storage.rs"
+
+[[bin]]
 name = "diff"
 path = "bin/diff.rs"
 
@@ -49,3 +53,4 @@ byteorder = "1.0.0"
 multiqueue = "0.3"
 hex = "0.3.1"
 difference = "2.0"
+petgraph = "0.4"

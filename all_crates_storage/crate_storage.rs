@@ -55,6 +55,7 @@ pub trait CrateSource :Sized {
 	type CrateHandle :CrateFileHandle<Self>;
 	fn get_crate_handle_nv(&mut self,
 			name :String, version :Version) -> Option<CrateHandle<Self, Self::CrateHandle>>;
+	// TODO maybe use CrateSpec here?
 	fn get_crate_nv(&mut self, name :String, version :Version) -> Option<Vec<u8>> {
 		self.get_crate(&CrateSpec {
 			name,
