@@ -25,5 +25,5 @@ fn main() {
 		.open(storage_con_base.join("crate_storage")).unwrap();
 	let mut cst = BlobCrateStorage::new(f).unwrap();
 
-	let graph = multi_blob_crate_storage::build_blob_graph_from_src(&acj, &mut cst);
+	let graph = multi_blob_crate_storage::build_blob_graph_from_blob_graph_storage(&acj, &mut cst);
 }

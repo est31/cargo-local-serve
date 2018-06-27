@@ -12,8 +12,26 @@ use std::io::{self, Read, Seek, Write, Result as IoResult};
 use std::collections::HashSet;
 
 pub struct BlobCrateStorage<S :Read + Seek> {
-	b :BlobStorage<S>,
+	pub(crate) b :BlobStorage<S>,
 }
+
+macro_rules! optry {
+	($e:expr) => {
+		match $e {
+			Some(d) => d,
+			None => return None,
+		}
+	};
+}
+macro_rules! decompress {
+	($e:expr) => {{
+		let mut gz_dec = GzDecoder::new($e.as_slice());
+		let mut r = Vec::new();
+		io::copy(&mut gz_dec, &mut r).unwrap();
+		r
+	}}
+}
+
 impl<S :Read + Seek> BlobCrateStorage<S> {
 	pub fn empty(storage :S) -> Self {
 		BlobCrateStorage {
@@ -29,6 +47,14 @@ impl<S :Read + Seek> BlobCrateStorage<S> {
 		Ok(BlobCrateStorage {
 			b : try!(BlobStorage::load(storage)),
 		})
+	}
+	pub(crate) fn get_crate_rec_meta(&mut self, s :&CrateSpec) -> Option<CrateRecMetadata> {
+		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
+
+		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
+		let dmeta = decompress!(cmeta);
+		let meta = optry!(CrateRecMetadata::deserialize(dmeta.as_slice()).ok());
+		Some(meta)
 	}
 }
 
@@ -103,23 +129,6 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 	}
 }
 
-macro_rules! optry {
-	($e:expr) => {
-		match $e {
-			Some(d) => d,
-			None => return None,
-		}
-	};
-}
-macro_rules! decompress {
-	($e:expr) => {{
-		let mut gz_dec = GzDecoder::new($e.as_slice());
-		let mut r = Vec::new();
-		io::copy(&mut gz_dec, &mut r).unwrap();
-		r
-	}}
-}
-
 pub struct StorageFileHandle {
 	meta :CrateRecMetadata,
 }
@@ -154,11 +163,7 @@ impl<S :Read + Seek> CrateSource for BlobCrateStorage<S> {
 			name,
 			version,
 		};
-		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
-
-		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
-		let dmeta = decompress!(cmeta);
-		let meta = optry!(CrateRecMetadata::deserialize(dmeta.as_slice()).ok());
+		let meta = optry!(self.get_crate_rec_meta(&s));
 
 		Some(CrateHandle {
 			source : self,
@@ -168,11 +173,7 @@ impl<S :Read + Seek> CrateSource for BlobCrateStorage<S> {
 		})
 	}
 	fn get_crate(&mut self, s :&CrateSpec) -> Option<Vec<u8>> {
-		let meta_d = optry!(self.b.name_index.get(&s.file_name())).clone();
-
-		let cmeta = optry!(optry!(self.b.get(&meta_d).ok()));
-		let dmeta = decompress!(cmeta);
-		let meta = optry!(CrateRecMetadata::deserialize(dmeta.as_slice()).ok());
+		let meta = optry!(self.get_crate_rec_meta(s));
 		let mut blobs = Vec::with_capacity(meta.entry_metadata.len());
 		for &(ref _hdr, ref d) in meta.entry_metadata.iter() {
 			let blob = optry!(optry!(self.b.get(d).ok()));

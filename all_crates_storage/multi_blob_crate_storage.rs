@@ -10,11 +10,12 @@ In the second step, we determine minimum spanning trees
 use hash_ctx::Digest;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
-use std::io;
+use std::io::{self, Read, Seek};
 use semver::Version;
 use petgraph::graph::{Graph, NodeIndex};
 use registry::registry::AllCratesJson;
-use crate_storage::CrateSource;
+use crate_storage::{CrateSource, CrateSpec};
+use blob_crate_storage::BlobCrateStorage;
 
 use super::hash_ctx::HashCtx;
 
@@ -115,3 +116,17 @@ pub fn build_blob_graph_from_src<C :CrateSource>(acj :&AllCratesJson, src :&mut 
 			.collect::<Vec<_>>()
 	})
 }
+
+pub fn build_blob_graph_from_blob_graph_storage<S :Read + Seek>(acj :&AllCratesJson,
+		src :&mut BlobCrateStorage<S>) -> GraphOfBlobs {
+	build_blob_graph_with(acj, |name :&str, version :&Version| {
+		println!("name {} v {}", name, version);
+		let s = CrateSpec {
+			name : name.to_string(),
+			version : version.clone(),
+		};
+		let meta = src.get_crate_rec_meta(&s).unwrap();
+		meta.get_file_digest_list()
+	})
+}
+

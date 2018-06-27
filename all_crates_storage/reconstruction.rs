@@ -182,4 +182,14 @@ impl CrateRecMetadata {
 			})
 			.collect::<Vec<_>>()
 	}
+	pub(crate) fn get_file_digest_list(&self) -> Vec<(Digest, String)> {
+		self.entry_metadata.iter()
+			.map(|&(ref h, d)| {
+				let hdr = hdr_from_ptr(h);
+				let path = hdr.path().unwrap();
+				let s :String = path.to_str().unwrap().to_owned();
+				(d, s)
+			})
+			.collect::<Vec<_>>()
+	}
 }
