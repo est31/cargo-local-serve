@@ -31,7 +31,7 @@ Build a directed graph of blobs where edges suggest
 that exploring whether to create a diff is a good idea or not.
 */
 pub fn build_blob_graph_with(acj :&AllCratesJson,
-		mut get_digest_list :impl FnMut(&str, &Version) -> Vec<(Digest, String)>)
+		mut get_digest_list :impl FnMut(&str, &Version) -> Option<Vec<(Digest, String)>>)
 		-> GraphOfBlobs {
 	/// Strips the first component of a path
 	fn strip_path<'a>(path :&'a str, name :&str, version :&Version) -> &'a str {
@@ -48,15 +48,21 @@ pub fn build_blob_graph_with(acj :&AllCratesJson,
 		let mut digest_lists = Vec::new();
 		for krate in crate_versions {
 			let digest_list = get_digest_list(&krate.name, &krate.version);
-			for (digest, path) in digest_list.iter() {
-				let path_stripped = strip_path(path, &krate.name, &krate.version)
-					.to_owned();
-				let mut digests = path_to_digests.entry(path_stripped)
-					.or_insert(HashSet::new());
-				digests.insert(*digest);
-				digest_to_version.insert(*digest, krate.version.clone());
+			if let Some(digest_list) = digest_list {
+				for (digest, path) in digest_list.iter() {
+					// TODO find a way to store these long file names
+					if path == "././@LongLink" {
+						continue;
+					}
+					let path_stripped = strip_path(path, &krate.name, &krate.version)
+						.to_owned();
+					let mut digests = path_to_digests.entry(path_stripped)
+						.or_insert(HashSet::new());
+					digests.insert(*digest);
+					digest_to_version.insert(*digest, krate.version.clone());
+				}
+				digest_lists.push((krate, digest_list));
 			}
-			digest_lists.push((krate, digest_list));
 		}
 		// Add the nodes
 		for (_krate, digest_list) in digest_lists.iter() {
@@ -94,6 +100,15 @@ pub fn build_blob_graph_with(acj :&AllCratesJson,
 	}
 }
 
+macro_rules! optry {
+	($e:expr) => {
+		match $e {
+			Some(d) => d,
+			None => return None,
+		}
+	};
+}
+
 pub fn build_blob_graph_from_src<C :CrateSource>(acj :&AllCratesJson, src :&mut C) -> GraphOfBlobs {
 	build_blob_graph_with(acj, |name :&str, version :&Version| {
 		println!("name {} v {}", name, version);
@@ -102,9 +117,9 @@ pub fn build_blob_graph_from_src<C :CrateSource>(acj :&AllCratesJson, src :&mut 
 		//      to include a way to obtain this directly.
 		//      Some format store the digests along the metadata.
 		// TODO don't use unwrap here
-		let mut handle = src.get_crate_handle_nv(name.to_string(), version.clone()).unwrap();
+		let mut handle = optry!(src.get_crate_handle_nv(name.to_string(), version.clone()));
 		let file_list = handle.get_file_list();
-		file_list.into_iter()
+		Some(file_list.into_iter()
 			.map(|path| {
 				let file = handle.get_file(&path).unwrap();
 				let mut file_rdr = &*file;
@@ -113,20 +128,21 @@ pub fn build_blob_graph_from_src<C :CrateSource>(acj :&AllCratesJson, src :&mut 
 				let digest = hash_ctx.finish_and_get_digest();
 				(digest, path)
 			})
-			.collect::<Vec<_>>()
+			.collect::<Vec<_>>())
 	})
 }
 
 pub fn build_blob_graph_from_blob_graph_storage<S :Read + Seek>(acj :&AllCratesJson,
 		src :&mut BlobCrateStorage<S>) -> GraphOfBlobs {
 	build_blob_graph_with(acj, |name :&str, version :&Version| {
-		println!("name {} v {}", name, version);
+		//println!("name {} v {}", name, version);
 		let s = CrateSpec {
 			name : name.to_string(),
 			version : version.clone(),
 		};
-		let meta = src.get_crate_rec_meta(&s).unwrap();
-		meta.get_file_digest_list()
+		// TODO treat LongLink
+		let meta = optry!(src.get_crate_rec_meta(&s));
+		Some(meta.get_file_digest_list())
 	})
 }
 

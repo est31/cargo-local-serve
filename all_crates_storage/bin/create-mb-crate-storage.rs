@@ -5,7 +5,7 @@ use std::fs::{self, OpenOptions};
 use std::env;
 use all_crates_storage::registry::registry;
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
-use all_crates_storage::crate_storage::{CrateSource};
+use all_crates_storage::crate_storage::CrateSource;
 use self::registry::{Registry, AllCratesJson};
 use all_crates_storage::multi_blob_crate_storage;
 
@@ -25,5 +25,8 @@ fn main() {
 		.open(storage_con_base.join("crate_storage")).unwrap();
 	let mut cst = BlobCrateStorage::new(f).unwrap();
 
+
+	//let graph = multi_blob_crate_storage::build_blob_graph_from_src(&acj, &mut cst);
 	let graph = multi_blob_crate_storage::build_blob_graph_from_blob_graph_storage(&acj, &mut cst);
+	println!("root number {}", graph.roots.len());
 }

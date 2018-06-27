@@ -23,6 +23,7 @@ macro_rules! optry {
 		}
 	};
 }
+
 macro_rules! decompress {
 	($e:expr) => {{
 		let mut gz_dec = GzDecoder::new($e.as_slice());
