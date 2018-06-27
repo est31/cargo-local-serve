@@ -8,19 +8,15 @@ In the second step, we determine minimum spanning trees
 */
 
 use hash_ctx::Digest;
-use super::blob_storage::{write_delim_byte_slice, read_delim_byte_slice};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::io;
 use semver::Version;
 use petgraph::graph::{Graph, NodeIndex};
 use registry::registry::AllCratesJson;
-use crate_storage::{CrateSource, CrateSpec};
+use crate_storage::CrateSource;
 
 use super::hash_ctx::HashCtx;
-use flate2::{Compression, GzBuilder};
-use flate2::read::GzDecoder;
-use tar::{Archive, Header};
 
 pub struct GraphOfBlobs {
 	pub graph :Graph<Digest, ()>,
@@ -97,37 +93,25 @@ pub fn build_blob_graph_with(acj :&AllCratesJson,
 	}
 }
 
-fn get_digest_list_for_crate<R :io::Read>(archive_rdr :R) -> Vec<(Digest, String)> {
-	// TODO make this function use try!().
-	let gz_dec = GzDecoder::new(archive_rdr);
-	let mut archive = Archive::new(gz_dec);
-	let mut digest_list = Vec::new();
-	for entry in archive.entries().unwrap().raw(true) {
-		let mut entry = entry.unwrap();
-		let path = {
-			let path_bytes = entry.header().path_bytes();
-			String::from_utf8(Vec::from(path_bytes)).unwrap()
-		};
-		let mut hash_ctx = HashCtx::new();
-		io::copy(&mut entry, &mut hash_ctx).unwrap();
-		let digest = hash_ctx.finish_and_get_digest();
-		digest_list.push((digest, path));
-	}
-	digest_list
-}
-
 pub fn build_blob_graph_from_src<C :CrateSource>(acj :&AllCratesJson, src :&mut C) -> GraphOfBlobs {
 	build_blob_graph_with(acj, |name :&str, version :&Version| {
 		println!("name {} v {}", name, version);
-		// TODO instead of obtaining the entire .crate file,
+		// TODO instead of obtaining the blobs,
 		//      extend the CrateSource trait or the CrateHandle trait
 		//      to include a way to obtain this directly.
 		//      Some format store the digests along the metadata.
 		// TODO don't use unwrap here
-		let crate_file = src.get_crate(&CrateSpec {
-			name : name.to_string(),
-			version : version.clone(),
-		}).unwrap();
-		get_digest_list_for_crate(&*crate_file)
+		let mut handle = src.get_crate_handle_nv(name.to_string(), version.clone()).unwrap();
+		let file_list = handle.get_file_list();
+		file_list.into_iter()
+			.map(|path| {
+				let file = handle.get_file(&path).unwrap();
+				let mut file_rdr = &*file;
+				let mut hash_ctx = HashCtx::new();
+				io::copy(&mut file_rdr, &mut hash_ctx).unwrap();
+				let digest = hash_ctx.finish_and_get_digest();
+				(digest, path)
+			})
+			.collect::<Vec<_>>()
 	})
 }
