@@ -7,7 +7,7 @@ use all_crates_storage::registry::registry;
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
 use all_crates_storage::crate_storage::CrateSource;
 use self::registry::{Registry, AllCratesJson};
-use all_crates_storage::multi_blob_crate_storage;
+use all_crates_storage::multi_blob_crate_storage::GraphOfBlobs;
 
 fn main() {
 	println!("Loading all crates json...");
@@ -26,7 +26,7 @@ fn main() {
 	let mut cst = BlobCrateStorage::new(f).unwrap();
 
 
-	//let graph = multi_blob_crate_storage::build_blob_graph_from_src(&acj, &mut cst);
-	let graph = multi_blob_crate_storage::build_blob_graph_from_blob_graph_storage(&acj, &mut cst);
+	//let graph = GraphOfBlobs::from_crate_source(&acj, &mut cst);
+	let graph = GraphOfBlobs::from_blob_crate_storage(&acj, &mut cst);
 	println!("root number {}", graph.roots.len());
 }
