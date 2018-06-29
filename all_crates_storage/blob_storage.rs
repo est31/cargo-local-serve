@@ -6,12 +6,13 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use super::hash_ctx::Digest;
 
 pub struct BlobStorage<S> {
+	blob_offsets :HashMap<Digest, u64>,
 	/// Index that maps (crate) names to digests
 	///
 	/// Note that not all blobs are present in this index, only those that represent
 	/// a crate.
 	pub name_index :HashMap<String, Digest>,
-	blob_offsets :HashMap<Digest, u64>,
+	pub digest_to_multi_blob :HashMap<Digest, Digest>,
 	storage :S,
 	index_offset :u64,
 }
@@ -32,6 +33,7 @@ impl<S :Read + Seek> BlobStorage<S> {
 	pub fn empty(storage :S) -> Self {
 		BlobStorage {
 			name_index : HashMap::new(),
+			digest_to_multi_blob : HashMap::new(),
 			blob_offsets : HashMap::new(),
 
 			storage,
@@ -52,11 +54,13 @@ impl<S :Read + Seek> BlobStorage<S> {
 		try!(storage.seek(SeekFrom::Start(0)));
 		let index_offset = try!(read_hdr(&mut storage));
 		try!(storage.seek(SeekFrom::Start(index_offset)));
-		let name_index = try!(read_name_idx(&mut storage));
 		let blob_offsets = try!(read_offset_table(&mut storage));
+		let name_index = try!(read_name_idx(&mut storage));
+		let digest_to_multi_blob = try!(read_digest_to_multi_blob(&mut storage));
 		Ok(BlobStorage {
-			name_index,
 			blob_offsets,
+			name_index,
+			digest_to_multi_blob,
 
 			storage,
 			index_offset,
@@ -100,8 +104,9 @@ impl<S :Seek + Write> BlobStorage<S> {
 		try!(self.storage.seek(SeekFrom::Start(0)));
 		try!(write_hdr(&mut self.storage, self.index_offset));
 		try!(self.storage.seek(SeekFrom::Start(self.index_offset)));
-		try!(write_name_idx(&mut self.storage, &self.name_index));
 		try!(write_offset_table(&mut self.storage, &self.blob_offsets));
+		try!(write_name_idx(&mut self.storage, &self.name_index));
+		try!(write_digest_to_multi_blob(&mut self.storage, &self.digest_to_multi_blob));
 		Ok(())
 	}
 }
@@ -157,6 +162,26 @@ fn write_name_idx<W :Write>(mut wtr :W, nidx :&HashMap<String, Digest>) -> IoRes
 	for (s,d) in nidx.iter() {
 		try!(write_delim_byte_slice(&mut wtr, s.as_bytes()));
 		try!(wtr.write(d));
+	}
+	Ok(())
+}
+fn read_digest_to_multi_blob<R :Read>(mut rdr :R) -> IoResult<HashMap<Digest, Digest>> {
+	let res_len = try!(rdr.read_u64::<BigEndian>());
+	let mut res = HashMap::new();
+	for _ in 0 .. res_len {
+		let mut d :Digest = [0; 32];
+		let mut d_multi :Digest = [0; 32];
+		try!(rdr.read_exact(&mut d));
+		try!(rdr.read_exact(&mut d_multi));
+		res.insert(d, d_multi);
+	}
+	Ok(res)
+}
+fn write_digest_to_multi_blob<W :Write>(mut wtr :W, nidx :&HashMap<Digest, Digest>) -> IoResult<()> {
+	try!(wtr.write_u64::<BigEndian>(nidx.len() as u64));
+	for (d, d_multi) in nidx.iter() {
+		try!(wtr.write(d));
+		try!(wtr.write(d_multi));
 	}
 	Ok(())
 }
