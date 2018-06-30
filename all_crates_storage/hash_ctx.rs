@@ -43,9 +43,7 @@ impl HashCtx {
 	pub fn finish_and_get_digest(self) -> Digest {
 		let digest = self.0.finish();
 		let mut res = [0; 32];
-		for i in 0 .. 32 {
-			res[i] = digest.as_ref()[i];
-		}
+		res[0 .. 32].clone_from_slice(&digest.as_ref()[0 .. 32]);
 		res
 	}
 }

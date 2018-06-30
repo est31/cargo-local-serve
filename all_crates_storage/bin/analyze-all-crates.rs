@@ -78,7 +78,7 @@ fn run(tx :SyncSender<Message>, acj :&AllCratesJson,
 			continue;
 		}
 
-		for ref v in versions.iter() {
+		for v in versions.iter() {
 			ctr += 1;
 			/*if ctr != 21899 {
 				continue;
