@@ -138,7 +138,7 @@ mod test {
 			Hello, dear
 			Reader!
 			Nice to see you."#;
-		let diff = Diff::from_texts(str_a, str_b, "\n");
+		let diff = Diff::from_texts_nl(str_a, str_b);
 		let str_b_reconstructed = diff.reconstruct_new(str_a);
 		assert_eq!(str_b, str_b_reconstructed);
 	}
@@ -152,7 +152,7 @@ mod test {
 			Hello, dear
 			Reader!
 			Nice to see you."#;
-		let diff = Diff::from_texts(str_a, str_b, "\n");
+		let diff = Diff::from_texts_nl(str_a, str_b);
 		let mut v = Vec::new();
 		diff.serialize(&mut v).unwrap();
 		let diff_reconstructed = Diff::deserialize(v.as_slice()).unwrap();
@@ -167,7 +167,7 @@ mod test {
 		let str_b = r#"
 			For this example,
 			we wonder about the first line."#;
-		let diff = Diff::from_texts(str_a, str_b, "\n");
+		let diff = Diff::from_texts_nl(str_a, str_b);
 		let str_b_reconstructed = diff.reconstruct_new(str_a);
 		assert_eq!(str_b, str_b_reconstructed);
 	}
