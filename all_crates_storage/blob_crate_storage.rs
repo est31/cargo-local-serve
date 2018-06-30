@@ -4,6 +4,8 @@ use super::reconstruction::{CrateContentBlobs, CrateRecMetadata,
 	CrateRecMetaWithBlobs, hdr_from_ptr};
 use super::crate_storage::{CrateStorage, CrateSpec, CrateSource,
 	CrateHandle, CrateFileHandle};
+use super::multi_blob::MultiBlob;
+use super::diff::Diff;
 
 use semver::Version;
 use flate2::{Compression, GzBuilder};
@@ -194,6 +196,7 @@ impl<S :Read + Seek> CrateSource for BlobCrateStorage<S> {
 enum ParallelTask {
 	ObtainCrateContentBlobs(String, Vec<u8>, Digest),
 	CompressBlob(Digest, Vec<u8>),
+	CreateMultiBlob(Vec<(Digest, Vec<u8>)>),
 }
 
 /// Tasks that need blocking access to the blob storage
@@ -201,6 +204,7 @@ enum BlockingTask {
 	StoreCrateUndeduplicated(String, Vec<u8>),
 	StoreCrateContentBlobs(String, CrateContentBlobs),
 	StoreBlob(Digest, Vec<u8>),
+	StoreMultiBlob(Digest, Vec<Digest>, Vec<u8>),
 }
 
 fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_task :ET) {
@@ -227,6 +231,44 @@ fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_ta
 			io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
 
 			emit_task(BlockingTask::StoreBlob(d, buffer_compressed));
+		},
+		ParallelTask::CreateMultiBlob(blobs) => {
+			let mut root_blob = None;
+			let mut diff_list = Vec::new();
+			let mut last :Option<(Digest, &str)> = None;
+			for (digest, blob) in blobs.iter() {
+				let s = ::std::str::from_utf8(blob).unwrap();
+				// TODO don't unwrap
+				if let Some(l) = last.take() {
+					let diff = Diff::from_texts_nl(&l.1, &s);
+					diff_list.push((l.0, *digest, diff));
+				} else {
+					root_blob = Some((*digest, s.to_string()));
+				}
+				last = Some((*digest, s));
+			}
+
+			let mb = MultiBlob {
+				root_blob : root_blob.unwrap(),
+				diff_list,
+			};
+			let mut mb_blob = Vec::new();
+			mb.serialize(&mut mb_blob).unwrap();
+
+			let mut hctx = HashCtx::new();
+			io::copy(&mut mb_blob.as_slice(), &mut hctx).unwrap();
+			let multi_blob_digest = hctx.finish_and_get_digest();
+
+			let mut gz_enc = GzBuilder::new().read(mb_blob.as_slice(), Compression::best());
+			let mut buffer_compressed = Vec::new();
+			io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
+
+			let digests = blobs.iter()
+				.map(|(digest, _b)| *digest)
+				.collect::<Vec<_>>();
+
+			let task = BlockingTask::StoreMultiBlob(multi_blob_digest, digests, buffer_compressed);
+			emit_task(task);
 		},
 	}
 }
@@ -266,6 +308,17 @@ fn handle_blocking_task<ET :FnMut(ParallelTask), S :Read + Seek + Write>(task :B
 		},
 		BlockingTask::StoreBlob(d, blob) => {
 			let actually_added = blob_store.insert(d, &blob).unwrap();
+			// If the blob is already present, it indicates a bug because
+			// we are supposed to check for presence before we ask for the
+			// blob to be compressed. If we would just shrug this off, we'd
+			// waste cycles spent on compressing the blobs.
+			assert!(actually_added, "Tried to insert a blob into the storage that was already present");
+		},
+		BlockingTask::StoreMultiBlob(mblob_digest, digests, buf_compressed) => {
+			let actually_added = blob_store.insert(mblob_digest, &buf_compressed).unwrap();
+			for d in digests.iter() {
+				blob_store.digest_to_multi_blob.insert(*d, mblob_digest);
+			}
 			// If the blob is already present, it indicates a bug because
 			// we are supposed to check for presence before we ask for the
 			// blob to be compressed. If we would just shrug this off, we'd

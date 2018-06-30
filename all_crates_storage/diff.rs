@@ -40,6 +40,9 @@ pub struct Diff {
 }
 
 impl Diff {
+	pub fn from_texts_nl(old :&str, new :&str) -> Self {
+		Diff::from_texts(old, new, "\n")
+	}
 	pub fn from_texts(old :&str, new :&str, sep :&str) -> Self {
 		let cset = Changeset::new(old, new, sep);
 		let len = cset.diffs.len();

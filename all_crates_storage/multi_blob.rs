@@ -15,13 +15,13 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use super::blob_storage::{write_delim_byte_slice, read_delim_byte_slice};
 
 pub struct MultiBlob {
-	root_blob :(Digest, String),
+	pub(crate) root_blob :(Digest, String),
 	/// The tree expressed in DFS traversal form.
 	///
 	/// In order to get the path to the root,
 	/// you should traverse this list in a reverse
 	/// fashion.
-	diff_list :Vec<(Digest, Digest, Diff)>,
+	pub(crate) diff_list :Vec<(Digest, Digest, Diff)>,
 }
 
 impl MultiBlob {
