@@ -340,8 +340,8 @@ fn main() {
 	} else {
 		const L :&[&str] = &[
 			"./site/",
-			"./cargo_local_serve/site/",
-			"../cargo_local_serve/site/",
+			"./cargo-local-serve/site/",
+			"../cargol-local-serve/site/",
 		];
 		'a :loop {
 			for p in L {
