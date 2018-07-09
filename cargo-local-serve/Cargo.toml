@@ -10,7 +10,7 @@ path = "main.rs"
 
 [dependencies]
 
-all_crates_storage = { path = "../all_crates_storage" }
+all-crates-storage = { path = "../all-crates-storage" }
 
 #iron related
 handlebars-iron = "0.26"

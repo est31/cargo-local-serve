@@ -15,12 +15,12 @@ dependencies = [
 name = "all-crate-grep"
 version = "0.1.0"
 dependencies = [
- "all_crates_storage 0.1.0",
+ "all-crates-storage 0.1.0",
  "grep 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-name = "all_crates_storage"
+name = "all-crates-storage"
 version = "0.1.0"
 dependencies = [
  "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -176,7 +176,7 @@ dependencies = [
 name = "cargo-local-serve"
 version = "0.1.0"
 dependencies = [
- "all_crates_storage 0.1.0",
+ "all-crates-storage 0.1.0",
  "ammonia 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
