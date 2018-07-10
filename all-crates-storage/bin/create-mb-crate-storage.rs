@@ -5,7 +5,6 @@ use std::fs::{self, OpenOptions};
 use std::env;
 use all_crates_storage::registry::registry;
 use all_crates_storage::blob_crate_storage::BlobCrateStorage;
-use all_crates_storage::crate_storage::CrateSource;
 use self::registry::{Registry, AllCratesJson};
 use all_crates_storage::multi_blob_crate_storage::GraphOfBlobs;
 
@@ -20,13 +19,20 @@ fn main() {
 
 	fs::create_dir_all(&storage_con_base).unwrap();
 
-	let f = OpenOptions::new()
+	let src_f = OpenOptions::new()
 		.read(true)
 		.open(storage_con_base.join("crate_storage")).unwrap();
-	let mut cst = BlobCrateStorage::new(f).unwrap();
 
+	let dst_f = OpenOptions::new()
+		.read(true)
+		.write(true)
+		.create(true)
+		.open(storage_con_base.join("crate_storage_mb")).unwrap();
+	let mut src = BlobCrateStorage::new(src_f).unwrap();
+	let mut dst = BlobCrateStorage::new(dst_f).unwrap();
 
-	//let graph = GraphOfBlobs::from_crate_source(&acj, &mut cst);
-	let graph = GraphOfBlobs::from_blob_crate_storage(&acj, &mut cst);
+	println!("Obtaining graph...");
+	let graph = GraphOfBlobs::from_blob_crate_storage(&acj, &mut src);
 	println!("root number {}", graph.roots.len());
+	dst.store_parallel_mb(&mut src, &graph, 8);
 }

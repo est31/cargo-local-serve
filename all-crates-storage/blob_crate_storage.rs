@@ -6,6 +6,7 @@ use super::crate_storage::{CrateStorage, CrateSpec, CrateSource,
 	CrateHandle, CrateFileHandle};
 use super::multi_blob::MultiBlob;
 use super::diff::Diff;
+use super::multi_blob_crate_storage::GraphOfBlobs;
 
 use semver::Version;
 use flate2::{Compression, GzBuilder};
@@ -65,6 +66,108 @@ impl<S :Read + Seek + Write> BlobCrateStorage<S> {
 	pub fn store(&mut self) -> io::Result<()> {
 		try!(self.b.write_header_and_index());
 		Ok(())
+	}
+}
+
+fn get_digest_lists(blob_graph :&GraphOfBlobs) -> Vec<Vec<Digest>> {
+	let mut res = Vec::with_capacity(blob_graph.roots.len());
+	let graph = &blob_graph.graph;
+	let mut visited = HashSet::new();
+	for root in blob_graph.roots.iter() {
+		let mut mblob_digests = Vec::new();
+		let mut to_walk = Vec::new();
+		to_walk.push(*root);
+		// TODO perform in-order traversal
+		// TODO also actually return a tree not a traversal.
+		// traversals perform pretty crappily if we have a tree present :).
+		while let Some(n) = to_walk.pop() {
+			if !visited.insert(n) {
+				continue;
+			}
+			let digest = graph.node_weight(n).unwrap();
+			mblob_digests.push(*digest);
+			let n = graph.neighbors(n);
+			for neigh in n {
+				to_walk.push(neigh);
+			}
+		}
+		res.push(mblob_digests);
+	}
+	res
+}
+
+impl<S :Read + Seek + Write> BlobCrateStorage<S> {
+	pub fn store_parallel_mb<T :Read + Seek + Write>(
+			&mut self, src :&mut BlobCrateStorage<T>,
+			blob_graph :&GraphOfBlobs, thread_count :u16) {
+		use std::sync::mpsc::{sync_channel, TrySendError};
+		use multiqueue::mpmc_queue;
+		use std::time::Duration;
+		use std::thread;
+
+		// TODO somehow also store the metadata -- without it we can't provide reading functionality to anyone
+
+		let digest_lists = get_digest_lists(blob_graph);
+		let mut digests_iter = digest_lists.iter();
+		let mut to_go = digest_lists.len();
+
+		let (bt_tx, bt_rx) = sync_channel(3 * thread_count as usize);
+		let (pt_tx, pt_rx) = mpmc_queue(3 * thread_count as u64);
+		for _ in 0 .. thread_count {
+			let bt_tx = bt_tx.clone();
+			let pt_rx = pt_rx.clone();
+			thread::spawn(move || {
+				while let Ok(task) = pt_rx.recv() {
+					handle_parallel_task(task, |bt| bt_tx.send(bt).unwrap());
+				}
+			});
+		}
+		drop(bt_tx);
+		pt_rx.unsubscribe();
+		let mut par_task_backlog = Vec::new();
+		let mut blobs_to_store = HashSet::new();
+		loop {
+			let mut done_something = false;
+			if let Ok(task) = bt_rx.recv_timeout(Duration::new(0, 50_000)) {
+				handle_blocking_task(task, &mut self.b,
+					&mut blobs_to_store, |tsk| par_task_backlog.push(tsk));
+				done_something = true;
+			}
+			if par_task_backlog.is_empty() {
+				for digests in (&mut digests_iter).take(10) {
+					to_go -= 1;
+					println!("{} {}", to_go, digests.len());
+					let blobs = digests.iter()
+						// TODO don't use unwrap here
+						// TODO instead of filter_map and skipping report an error or something something
+						.filter_map(|digest| src.b.get(digest).unwrap().map(|b|(*digest, b)))
+						.collect::<Vec<_>>();
+					par_task_backlog.push(ParallelTask::CreateMultiBlob(blobs));
+					done_something = true;
+				}
+			}
+			loop {
+				let mut removed_something = false;
+				if let Some(t) = par_task_backlog.pop() {
+					if let Err(e) = pt_tx.try_send(t) {
+						let t = match e {
+							TrySendError::Full(t) => t,
+							TrySendError::Disconnected(t) => t,
+						};
+						par_task_backlog.push(t);
+					} else {
+						removed_something = true;
+						done_something = true;
+					}
+				}
+				if !removed_something {
+					break;
+				}
+			}
+			if !done_something && par_task_backlog.is_empty() {
+				break;
+			}
+		}
 	}
 }
 
@@ -233,40 +336,52 @@ fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_ta
 		ParallelTask::CreateMultiBlob(blobs) => {
 			let mut root_blob = None;
 			let mut diff_list = Vec::new();
+			let mut digests = Vec::new();
 			let mut last :Option<(Digest, &str)> = None;
 			for (digest, blob) in blobs.iter() {
-				let s = ::std::str::from_utf8(blob).unwrap();
-				// TODO don't unwrap
-				if let Some(l) = last.take() {
-					let diff = Diff::from_texts_nl(&l.1, &s);
-					diff_list.push((l.0, *digest, diff));
+				if let Ok(s) = ::std::str::from_utf8(&blob) {
+					digests.push(digest);
+					if let Some(l) = last.take() {
+						let diff = Diff::from_texts_nl(&l.1, &s);
+						diff_list.push((l.0, *digest, diff));
+					} else {
+						root_blob = Some((*digest, s.to_string()));
+					}
+					last = Some((*digest, s));
 				} else {
-					root_blob = Some((*digest, s.to_string()));
+					// UTF-8 decode error. Skip this one.
+					// TODO emit a compression parallel task here. one day.
+					let mut gz_enc = GzBuilder::new().read(blob.as_slice(), Compression::best());
+					let mut buffer_compressed = Vec::new();
+					io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
+
+					emit_task(BlockingTask::StoreBlob(*digest, buffer_compressed));
 				}
-				last = Some((*digest, s));
 			}
 
-			let mb = MultiBlob {
-				root_blob : root_blob.unwrap(),
-				diff_list,
-			};
-			let mut mb_blob = Vec::new();
-			mb.serialize(&mut mb_blob).unwrap();
+			if digests.len() > 0 {
+				let mb = MultiBlob {
+					root_blob : root_blob.unwrap(),
+					diff_list,
+				};
+				let mut mb_blob = Vec::new();
+				mb.serialize(&mut mb_blob).unwrap();
 
-			let mut hctx = HashCtx::new();
-			io::copy(&mut mb_blob.as_slice(), &mut hctx).unwrap();
-			let multi_blob_digest = hctx.finish_and_get_digest();
+				let mut hctx = HashCtx::new();
+				io::copy(&mut mb_blob.as_slice(), &mut hctx).unwrap();
+				let multi_blob_digest = hctx.finish_and_get_digest();
 
-			let mut gz_enc = GzBuilder::new().read(mb_blob.as_slice(), Compression::best());
-			let mut buffer_compressed = Vec::new();
-			io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
+				let mut gz_enc = GzBuilder::new().read(mb_blob.as_slice(), Compression::best());
+				let mut buffer_compressed = Vec::new();
+				io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
 
-			let digests = blobs.iter()
-				.map(|(digest, _b)| *digest)
-				.collect::<Vec<_>>();
+				let digests = blobs.iter()
+						.map(|(digest, _b)| *digest)
+						.collect::<Vec<_>>();
 
-			let task = BlockingTask::StoreMultiBlob(multi_blob_digest, digests, buffer_compressed);
-			emit_task(task);
+				let task = BlockingTask::StoreMultiBlob(multi_blob_digest, digests, buffer_compressed);
+				emit_task(task);
+			}
 		},
 	}
 }
