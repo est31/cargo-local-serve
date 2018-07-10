@@ -83,8 +83,7 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 			let pt_rx = pt_rx.clone();
 			thread::spawn(move || {
 				while let Ok(task) = pt_rx.recv() {
-					let bl_task = handle_parallel_task(task);
-					bt_tx.send(bl_task).unwrap();
+					handle_parallel_task(task, |bt| bt_tx.send(bt).unwrap());
 				}
 			});
 		}
@@ -206,30 +205,30 @@ enum BlockingTask {
 	StoreMultiBlob(Digest, Vec<Digest>, Vec<u8>),
 }
 
-fn handle_parallel_task(task :ParallelTask) -> BlockingTask {
+fn handle_parallel_task<ET :FnMut(BlockingTask)>(task :ParallelTask, mut emit_task :ET) {
 	match task {
 		ParallelTask::ObtainCrateContentBlobs(crate_file_name, crate_archive_file, digest) => {
 			match CrateContentBlobs::from_archive_file(&crate_archive_file[..]) {
 				Ok(ccb) => {
 					if digest == ccb.digest_of_reconstructed() {
-						BlockingTask::StoreCrateContentBlobs(crate_file_name, ccb)
+						emit_task(BlockingTask::StoreCrateContentBlobs(crate_file_name, ccb));
 					} else {
 						// Digest mismatch
-						BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_archive_file)
+						emit_task(BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_archive_file));
 					}
 				},
 				Err(_) => {
 					// Error during CrateContentBlobs creation... most likely invalid gz file or sth
-					BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_archive_file)
+					emit_task(BlockingTask::StoreCrateUndeduplicated(crate_file_name, crate_archive_file));
 				},
-			}
+			};
 		},
 		ParallelTask::CompressBlob(d, blob) => {
 			let mut gz_enc = GzBuilder::new().read(blob.as_slice(), Compression::best());
 			let mut buffer_compressed = Vec::new();
 			io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();
 
-			BlockingTask::StoreBlob(d, buffer_compressed)
+			emit_task(BlockingTask::StoreBlob(d, buffer_compressed));
 		},
 		ParallelTask::CreateMultiBlob(blobs) => {
 			let mut root_blob = None;
@@ -266,7 +265,8 @@ fn handle_parallel_task(task :ParallelTask) -> BlockingTask {
 				.map(|(digest, _b)| *digest)
 				.collect::<Vec<_>>();
 
-			BlockingTask::StoreMultiBlob(multi_blob_digest, digests, buffer_compressed)
+			let task = BlockingTask::StoreMultiBlob(multi_blob_digest, digests, buffer_compressed);
+			emit_task(task);
 		},
 	}
 }
