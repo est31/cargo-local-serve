@@ -76,8 +76,8 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 		use std::time::Duration;
 		use std::thread;
 
-		let (bt_tx, bt_rx) = sync_channel(10);
-		let (pt_tx, pt_rx) = mpmc_queue(10);
+		let (bt_tx, bt_rx) = sync_channel(3 * thread_count as usize);
+		let (pt_tx, pt_rx) = mpmc_queue(3 * thread_count as u64);
 		for _ in 0 .. thread_count {
 			let bt_tx = bt_tx.clone();
 			let pt_rx = pt_rx.clone();
