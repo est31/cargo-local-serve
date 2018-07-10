@@ -99,12 +99,10 @@ impl<S :Read + Seek + Write> CrateStorage for BlobCrateStorage<S> {
 				done_something = true;
 			}
 			if par_task_backlog.is_empty() {
-				for _ in 0 .. 10 {
-					if let Some((sp, b, d)) = crate_iter.next() {
-						let name = sp.file_name();
-						par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(name, b, d));
-						done_something = true;
-					}
+				for (sp, b, d) in (&mut crate_iter).take(10) {
+					let name = sp.file_name();
+					par_task_backlog.push(ParallelTask::ObtainCrateContentBlobs(name, b, d));
+					done_something = true;
 				}
 			}
 			loop {
