@@ -1,5 +1,13 @@
 # Cargo local serve usage notes
 
+## config.toml
+
+cargo local serve itself is configurable.
+It per default looks for a `config.toml`
+file in its `PATH`.
+You can copy `config.toml.example`
+and modify it according to your needs.
+
 ## Managing crate storage
 
 You need a local copy of all crates.io crates
@@ -45,14 +53,6 @@ already present files.
 However, it should be easy to add such
 a mode if desired. Please contact the
 author or try to make a patch yourself.
-
-## config.toml
-
-cargo local serve itself is configurable.
-It per default looks for a `config.toml`
-file in its `PATH`.
-You can copy `config.toml.example`
-and modify it according to your needs.
 
 ## Making cargo point at it
 
