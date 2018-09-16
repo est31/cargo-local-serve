@@ -13,7 +13,7 @@ path = "main.rs"
 all-crates-storage = { path = "../all-crates-storage" }
 
 #iron related
-handlebars-iron = "0.26"
+handlebars-iron = "0.27"
 iron = "0.6.0"
 staticfile = { version = "0.5", features = ["cache"] }
 urlencoded = "0.6"

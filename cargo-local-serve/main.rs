@@ -26,7 +26,6 @@ use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
 use iron::headers::{ContentEncoding, Encoding, Location};
 use hbs::{Template, HandlebarsEngine, DirectorySource};
-use hbs::handlebars::{Handlebars, RenderContext, RenderError, Helper};
 use serde_json::value::{Value, Map};
 
 use iron::headers::Referer;
@@ -398,14 +397,6 @@ fn main() {
 		panic!("{}", r);
 	}
 
-    hbse.handlebars_mut().register_helper("some_helper",
-		Box::new(|_: &Helper,
-			_: &Handlebars,
-			_: &mut RenderContext| -> Result<(), RenderError> {
-			Ok(())
-			}
-		)
-	);
 	let mut mount = Mount::new();
 	mount.mount("/reverse_dependencies", reverse_dependencies);
 	mount.mount("/versions", versions);
