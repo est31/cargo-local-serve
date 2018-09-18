@@ -35,7 +35,7 @@ path = "bin/diff.rs"
 
 # Needed by the binaries
 pbr = "1.0.0"
-reqwest = "0.8"
+reqwest = "0.9"
 
 # all the other stuff
 string-interner = "0.7"
