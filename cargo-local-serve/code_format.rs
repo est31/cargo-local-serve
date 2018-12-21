@@ -17,7 +17,7 @@ pub fn highlight_string_snippet(s :&str, syntax :&SyntaxReference, theme :&Theme
 		c.b).unwrap();
 	let mut spcx = StyledPrintCx::new(IncludeBackground::IfDifferent(c));
 	for line in s.lines() {
-		let regions = highlighter.highlight(line);
+		let regions = highlighter.highlight(line, syns);
 		spcx.styles_to_coloured_html(&mut output, &regions[..]);
 		output.push('\n');
 	}
