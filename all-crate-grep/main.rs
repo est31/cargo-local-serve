@@ -10,11 +10,12 @@ use self::registry::{Registry, AllCratesJson};
 use std::thread;
 use std::sync::mpsc::{sync_channel, SyncSender};
 
-use grep::{GrepBuilder, Grep, Match};
+use grep::regex::RegexMatcher;
+use grep::matcher::Matcher;
 
 fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 		total_file_count :usize, t :usize, tc :usize,
-		grepper :&Grep, storage_base :&Path) {
+		grepper :&RegexMatcher, storage_base :&Path) {
 	let mut ctr = 0;
 
 	macro_rules! pln {
@@ -47,8 +48,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 			let mut match_found = false;
 			fh.crate_file_handle.map_all_files(|file_path, file| {
 				if let (Some(file_path), Some(file)) = (file_path, file) {
-					let mut m = Match::new();
-					if grepper.read_match(&mut m, &file, 0) {
+					if let Ok(Some(_)) = grepper.find(&file) {
 						pln!("Match found in {} v {} file {}", name, v.version, file_path);
 						match_found = true;
 					}
@@ -75,7 +75,7 @@ fn main() {
 
 	let needle = env::args().nth(1).expect("expected search term");
 	println!("Search term '{}'", needle);
-	let grepper = GrepBuilder::new(&needle).build().unwrap();
+	let grepper = RegexMatcher::new_line_matcher(&needle).unwrap();
 
 	let (tx, rx) = sync_channel(10);
 

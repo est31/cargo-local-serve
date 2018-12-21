@@ -11,4 +11,4 @@ path = "main.rs"
 [dependencies]
 
 all-crates-storage = { path = "../all-crates-storage" }
-grep = "0.1"
+grep = "0.2"
