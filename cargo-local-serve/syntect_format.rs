@@ -39,7 +39,7 @@ impl<'a> SyntectFormatter<'a> {
 			if let Some(syntax) = syntax {
 				// TODO find a way to avoid inline css in the syntect formatter
 				let formatted = highlight_string_snippet(snippet,
-					&syntax, theme);
+					&syntax, theme, s);
 				return formatted;
 			} else {
 				let code_block = format!("<pre><code>{}</code></pre>",

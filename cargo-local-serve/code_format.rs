@@ -1,11 +1,11 @@
 use std::fmt::{self, Write};
 use syntect::html::IncludeBackground;
-use syntect::parsing::SyntaxDefinition;
+use syntect::parsing::{SyntaxReference, SyntaxSet};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Theme, Style, FontStyle, Color};
 use escape::Escape;
 
-pub fn highlight_string_snippet(s :&str, syntax :&SyntaxDefinition, theme :&Theme)
+pub fn highlight_string_snippet(s :&str, syntax :&SyntaxReference, theme :&Theme, syns :&SyntaxSet)
 		-> String {
 	let mut output = String::new();
 	let mut highlighter = HighlightLines::new(syntax, theme);
