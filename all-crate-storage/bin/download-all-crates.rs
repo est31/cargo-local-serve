@@ -1,13 +1,13 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 extern crate reqwest;
 
 use std::fs::{self, File};
 use std::io;
 use std::env;
 use reqwest::Client;
-use all_crates_storage::registry::registry;
+use all_crate_storage::registry::registry;
 use self::registry::{Registry, AllCratesJson};
-use all_crates_storage::hash_ctx::HashCtx;
+use all_crate_storage::hash_ctx::HashCtx;
 
 /// This is the URL pattern that we are using to download the .crate
 /// files from hosting.

@@ -20,7 +20,7 @@ extern crate syntect;
 extern crate lazy_static;
 extern crate failure;
 
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
@@ -48,11 +48,11 @@ use urlencoded::UrlEncodedQuery;
 
 use semver::Version as SvVersion;
 
-use all_crates_storage::registry::registry::Registry;
-use all_crates_storage::registry::statistics::{compute_crate_statistics, CrateStats};
-use all_crates_storage::crate_storage::{DynCrateSource, FileTreeStorage, CrateSource};
-use all_crates_storage::blob_crate_storage::BlobCrateStorage;
-use all_crates_storage::crate_storage::CrateSpec;
+use all_crate_storage::registry::registry::Registry;
+use all_crate_storage::registry::statistics::{compute_crate_statistics, CrateStats};
+use all_crate_storage::crate_storage::{DynCrateSource, FileTreeStorage, CrateSource};
+use all_crate_storage::blob_crate_storage::BlobCrateStorage;
+use all_crate_storage::crate_storage::CrateSpec;
 
 mod registry_data;
 mod markdown_render;

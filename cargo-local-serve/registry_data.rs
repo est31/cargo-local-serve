@@ -5,9 +5,9 @@ use semver::Version as SvVersion;
 use semver::VersionReq;
 use urlencoded::QueryMap;
 
-use all_crates_storage::registry::registry::{Dependency, Registry, DependencyKind};
-use all_crates_storage::registry::statistics::CrateStats;
-use all_crates_storage::crate_storage::CrateSource;
+use all_crate_storage::registry::registry::{Dependency, Registry, DependencyKind};
+use all_crate_storage::registry::statistics::CrateStats;
+use all_crate_storage::crate_storage::CrateSource;
 use super::markdown_render::render_markdown;
 
 #[derive(Serialize, Debug)]

@@ -1,4 +1,4 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 extern crate flate2;
 extern crate tar;
 extern crate pbr;
@@ -7,8 +7,8 @@ use std::fs::File;
 use std::io;
 use std::env;
 use std::path::Path;
-use all_crates_storage::registry::registry;
-use all_crates_storage::hash_ctx::HashCtx;
+use all_crate_storage::registry::registry;
+use all_crate_storage::hash_ctx::HashCtx;
 use self::registry::{Registry, AllCratesJson};
 use flate2::{Compression, GzBuilder};
 use flate2::read::GzDecoder;

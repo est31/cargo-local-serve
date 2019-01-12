@@ -1,4 +1,4 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 extern crate semver;
 
 use semver::Version;
@@ -6,10 +6,10 @@ use semver::Version;
 use std::fs::{self, OpenOptions};
 use std::env;
 use std::str;
-use all_crates_storage::registry::registry;
-use all_crates_storage::blob_crate_storage::BlobCrateStorage;
-use all_crates_storage::crate_storage::{CrateSource};
-use all_crates_storage::diff::Diff;
+use all_crate_storage::registry::registry;
+use all_crate_storage::blob_crate_storage::BlobCrateStorage;
+use all_crate_storage::crate_storage::{CrateSource};
+use all_crate_storage::diff::Diff;
 use self::registry::{Registry, AllCratesJson};
 
 fn main() {

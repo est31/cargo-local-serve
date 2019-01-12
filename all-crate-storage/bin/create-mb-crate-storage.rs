@@ -1,12 +1,12 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 extern crate semver;
 
 use std::fs::{self, OpenOptions};
 use std::env;
-use all_crates_storage::registry::registry;
-use all_crates_storage::blob_crate_storage::BlobCrateStorage;
+use all_crate_storage::registry::registry;
+use all_crate_storage::blob_crate_storage::BlobCrateStorage;
 use self::registry::{Registry, AllCratesJson};
-use all_crates_storage::multi_blob_crate_storage::GraphOfBlobs;
+use all_crate_storage::multi_blob_crate_storage::GraphOfBlobs;
 
 fn main() {
 	println!("Loading all crates json...");

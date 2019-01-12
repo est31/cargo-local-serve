@@ -1,2 +1,2 @@
 [workspace]
-members = ["all-crates-storage", "cargo-local-serve", "all-crate-grep"]
+members = ["all-crate-storage", "cargo-local-serve", "all-crate-grep"]

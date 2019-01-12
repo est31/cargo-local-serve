@@ -1,12 +1,12 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 
 use std::io;
 use std::env;
 use std::path::Path;
-use all_crates_storage::registry::registry;
-use all_crates_storage::reconstruction::{CrateContentBlobs};
-use all_crates_storage::hash_ctx::{HashCtx, get_digest_hex};
-use all_crates_storage::crate_storage::{CrateSource, FileTreeStorage};
+use all_crate_storage::registry::registry;
+use all_crate_storage::reconstruction::{CrateContentBlobs};
+use all_crate_storage::hash_ctx::{HashCtx, get_digest_hex};
+use all_crate_storage::crate_storage::{CrateSource, FileTreeStorage};
 use self::registry::{Registry, AllCratesJson};
 
 use std::thread;

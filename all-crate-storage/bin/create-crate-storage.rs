@@ -1,10 +1,10 @@
-extern crate all_crates_storage;
+extern crate all_crate_storage;
 
 use std::fs::{self, OpenOptions};
 use std::env;
-use all_crates_storage::registry::registry;
-use all_crates_storage::blob_crate_storage::BlobCrateStorage;
-use all_crates_storage::crate_storage::{FileTreeStorage, CrateStorage};
+use all_crate_storage::registry::registry;
+use all_crate_storage::blob_crate_storage::BlobCrateStorage;
+use all_crate_storage::crate_storage::{FileTreeStorage, CrateStorage};
 use self::registry::{Registry, AllCratesJson};
 
 fn main() {
