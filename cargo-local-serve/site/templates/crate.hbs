@@ -15,6 +15,9 @@
 			<li><a href="{{c.documentation}}">Documentation</a></li>
 		{{#if c.repository}}
 			<li><a href="{{c.repository}}">Repository</a></li>
+			{{#if c.vcs_commit}}
+			<li><a href="{{c.repository}}/commit/{{c.vcs_commit}}">Commit link</a></li>
+			{{/if}}
 		{{/if}}
 			<li><a href="/reverse_dependencies/{{c.name}}/">Dependent crates</a></li>
 			<li><a href="/files/{{c.name}}/{{c.version}}/">Browse files</a></li>

@@ -19,6 +19,7 @@ pub struct Crate {
 	repository :Option<String>,
 	description :String,
 	readme_html :Option<String>,
+	vcs_commit :Option<String>,
 	authors :Vec<Author>,
 	license :String,
 	versions :Vec<Version>,
@@ -81,6 +82,7 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 		repository : Some("https://github.com/retep998/winapi-rs".to_string()),
 		description : "Types and constants for WinAPI bindings. See README for list of crates providing function bindings.".to_string(),
 		readme_html : None,
+		vcs_commit : None,
 		authors : vec![
 			Author {
 				name : "Peter Atashian".to_string(),
@@ -173,6 +175,26 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 	} else {
 		None
 	};
+
+	let vcs_commit = if let Some(c) = fh.get_file(
+				&format!("{}-{}/{}", name, version, ".cargo_vcs_info.json")) {
+		if let Ok(s) = String::from_utf8(c) {
+			#[derive(Deserialize)]
+			struct Git {
+				sha1 :String,
+			}
+			#[derive(Deserialize)]
+			struct VcsJson {
+				git :Git,
+			}
+			let vcs_json :Option<VcsJson> = serde_json::from_str(&s).ok();
+			vcs_json.map(|v| v.git.sha1)
+		} else {
+			None
+		}
+	} else {
+		None
+	};
 	let versions = crate_json.iter()
 		.map(|v| v.version.clone())
 		.collect::<Vec<_>>();
@@ -197,6 +219,7 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		repository : info.package.repository,
 		description : info.package.description,
 		readme_html : readme_html,
+		vcs_commit,
 		authors : info.package.authors.iter()
 			.map(|s| Author::from_str(&s)).collect(),
 		license : info.package.license,
