@@ -21,7 +21,7 @@ In order to download all crates that
 are stored in the local registry,
 just run the command:
 ```
-cargo run --release -p all-crates-storage --bin download-all-crates
+cargo run --release -p all-crate-storage --bin download-all-crates
 ```
 It will download all crates to the `crate-archives/`
 directory.
@@ -35,7 +35,7 @@ You can create a compressed file
 from already locally present .crate files
 using this command:
 ```
-cargo run --release -p all-crates-storage --bin create-crate-storage
+cargo run --release -p all-crate-storage --bin create-crate-storage
 ```
 
 This storage method is referred to as
