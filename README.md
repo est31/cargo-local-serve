@@ -1,4 +1,4 @@
-<img src="cargo_local_serve/site/static/package-logo.svg" width="128">
+<img src="cargo-local-serve/site/static/package-logo.svg" width="128">
 
 # Cargo local serve
 
