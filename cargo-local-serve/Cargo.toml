@@ -22,7 +22,7 @@ hyper = "0.10"
 
 # markdown rendering
 pulldown-cmark = { version = "0.2.0", default-features = false }
-ammonia = "1.0.0"
+ammonia = "2.0.0"
 syntect = "3.0"
 
 # all the other stuff
