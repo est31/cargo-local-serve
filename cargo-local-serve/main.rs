@@ -159,13 +159,17 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	let opt_version = path.get(1).map(|v| *v);
 	let mut resp = Response::new();
 	CRATE_SOURCE.with(|s| {
-		let crate_data = registry_data::get_crate_data(name.to_string(),
+		let crate_data_res = registry_data::get_crate_data(name.to_string(),
 			&REGISTRY, &mut *s.borrow_mut(), opt_version);
-		if let Some(data) = crate_data {
-			resp.set_mut(Template::new("crate", data))
-				.set_mut(status::Ok);
-		} else {
-			resp.set_mut(status::NotFound);
+		match crate_data_res {
+			Ok(data) => {
+				resp.set_mut(Template::new("crate", data))
+					.set_mut(status::Ok);
+			},
+			Err(msg) => {
+				println!("{}", msg);
+				resp.set_mut(status::NotFound);
+			},
 		}
 	});
 	Ok(resp)

@@ -117,7 +117,7 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 }
 
 pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
-		version :Option<&str>) -> Option<Map<String, Value>> {
+		version :Option<&str>) -> Result<Map<String, Value>, String> {
 
 	#[derive(Deserialize)]
 	struct CratePackage {
@@ -148,7 +148,9 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 	};
 	let mut fh = match st.get_crate_handle_nv(name.to_owned(), version.clone()) {
 		Some(f) => f,
-		None => panic!("Version {} of crate {} not mirrored", version, name),
+		None => return Err(
+			format!("Version {} of crate {} not mirrored", version, name)
+		),
 	};
 	let cargo_toml_extracted = fh.get_file(
 		&format!("{}-{}/Cargo.toml", name, version));
@@ -156,7 +158,7 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 	let cargo_toml_file = if let Some(toml_file) = cargo_toml_extracted {
 		toml_file
 	} else {
-		return None;
+		return Err("Cargo.toml file does not exist".into());
 	};
 
 	let info :CrateInfo = toml::from_slice(&cargo_toml_file).unwrap();
@@ -245,7 +247,7 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		},
 	};
 	data.insert("c".to_string(), to_json(&krate));
-	Some(data)
+	Ok(data)
 }
 
 pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
