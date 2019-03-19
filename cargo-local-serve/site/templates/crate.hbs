@@ -16,7 +16,7 @@
 		{{#if c.details.repository}}
 			<li><a href="{{c.repository}}">Repository</a></li>
 			{{#if c.details.vcs_commit}}
-			<li><a href="{{c.repository}}/commit/{{c.vcs_commit}}">Commit link</a></li>
+			<li><a href="{{c.details.repository}}/commit/{{c.details.vcs_commit}}">Commit link</a></li>
 			{{/if}}
 		{{/if}}
 			<li><a href="/reverse_dependencies/{{c.name}}/">Dependent crates</a></li>
