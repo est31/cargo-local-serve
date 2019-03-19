@@ -1,7 +1,6 @@
 use pulldown_cmark::{html, Parser, Event, Tag};
 use ammonia::Builder;
 use syntect_format::SyntectFormatter;
-use std::borrow::Cow;
 
 struct EventIter<'a> {
 	p :Parser<'a>,
@@ -45,7 +44,7 @@ impl<'a> Iterator for EventIter<'a> {
 
 					let fmt = SyntectFormatter::new().token(token);
 					let formatted = fmt.highlight_snippet(&text_buf);
-					return Some(Event::Html(Cow::Owned(formatted)));
+					return Some(Event::Html(formatted.into()));
 				},
 				_ => panic!("Unexpected element inside codeblock mode {:?}", next),
 			}
