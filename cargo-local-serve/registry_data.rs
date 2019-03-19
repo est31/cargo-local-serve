@@ -250,6 +250,79 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 	Ok(data)
 }
 
+pub fn get_crate_error_data(name :String, reg :&Registry,
+		version :Option<&str>, err_msg :String) -> Map<String, Value> {
+
+	#[derive(Serialize, Debug)]
+	struct Crate {
+		name :String,
+		version :String,
+		documentation :String,
+		err_msg :String,
+		versions :Vec<Version>,
+		versions_limited :Option<usize>,
+		dependencies :Vec<Dependency>,
+		dev_dependencies :Option<Vec<Dependency>>,
+	}
+
+	let mut data = Map::new();
+
+	let crate_json = reg.get_crate_json(&name).unwrap();
+	let version = if let Some(v) = version {
+		SvVersion::parse(v).unwrap()
+	} else {
+		// Finds the latest version
+		// TODO handle the case that there is no version
+		// -- then the crate is not present!!!
+		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
+	};
+
+	let versions = crate_json.iter()
+		.map(|v| v.version.clone())
+		.collect::<Vec<_>>();
+	let (v_start, v_limited) = if versions.len() > 5 {
+		(versions.len() - 5, true)
+	} else {
+		(0, false)
+	};
+	let json_for_version = crate_json.iter()
+		.filter(|v| v.version == version).next().unwrap();
+
+	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Dev)
+			.map(|d| d.to_crate_dep())
+			.collect();
+
+	let krate = Crate {
+		name : name.clone(),
+		version : version.to_string(),
+		documentation : format!("https://docs.rs/{}/{}", name.clone(), version.to_string()),
+		err_msg,
+		versions : versions[v_start ..].iter().map(|v|
+			Version {
+				v : format!("{}", v),
+				date : None,
+			}
+		).collect(),
+		versions_limited : if v_limited {
+			Some(versions.len())
+		} else {
+			None
+		},
+		dependencies : json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Normal)
+			.map(|d| d.to_crate_dep())
+			.collect(),
+		dev_dependencies : if dev_deps.len() > 0 {
+			Some(dev_deps)
+		} else {
+			None
+		},
+	};
+	data.insert("c".to_string(), to_json(&krate));
+	data
+}
+
 pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
 		-> Map<String, Value> {
 

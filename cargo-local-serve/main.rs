@@ -167,8 +167,12 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 					.set_mut(status::Ok);
 			},
 			Err(msg) => {
-				println!("{}", msg);
-				resp.set_mut(status::NotFound);
+				let data = registry_data::get_crate_error_data(name.to_string(),
+					&REGISTRY, opt_version, msg);
+				resp.set_mut(Template::new("crate-error", data))
+					.set_mut(status::NotFound);
+				//println!("{}", msg);
+				//resp.set_mut();
 			},
 		}
 	});
