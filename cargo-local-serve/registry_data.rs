@@ -14,14 +14,9 @@ use super::markdown_render::render_markdown;
 pub struct Crate {
 	name :String,
 	version :String,
-	homepage :Option<String>,
+	details :Option<CrateDetails>,
+	err_msg :Option<String>,
 	documentation :String,
-	repository :Option<String>,
-	description :String,
-	readme_html :Option<String>,
-	vcs_commit :Option<String>,
-	authors :Vec<Author>,
-	license :String,
 	versions :Vec<Version>,
 	versions_limited :Option<usize>,
 	dependencies :Vec<Dependency>,
@@ -77,19 +72,23 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 	let krate = Crate {
 		name : "winapi".to_string(),
 		version : "0.2.8".to_string(),
-		homepage : None,
+		details : Some(CrateDetails {
+			homepage : None,
+			repository : Some("https://github.com/retep998/winapi-rs".to_string()),
+			description : "Types and constants for WinAPI bindings. See README for list of crates providing function bindings.".to_string(),
+
+			readme_html : None,
+			vcs_commit : None,
+			authors : vec![
+				Author {
+					name : "Peter Atashian".to_string(),
+					email : Some("retep998@gmail.com".to_string()),
+				},
+			],
+			license : "MIT".to_string(),
+		}),
+		err_msg : None,
 		documentation : "https://docs.rs/winapi".to_string(),
-		repository : Some("https://github.com/retep998/winapi-rs".to_string()),
-		description : "Types and constants for WinAPI bindings. See README for list of crates providing function bindings.".to_string(),
-		readme_html : None,
-		vcs_commit : None,
-		authors : vec![
-			Author {
-				name : "Peter Atashian".to_string(),
-				email : Some("retep998@gmail.com".to_string()),
-			},
-		],
-		license : "MIT".to_string(),
 		versions : vec![
 			Version {
 				v: "0.2.8".to_string(),
@@ -117,8 +116,87 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 }
 
 pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
-		version :Option<&str>) -> Result<Map<String, Value>, String> {
+		version :Option<&str>) -> Map<String, Value> {
 
+	let mut data = Map::new();
+
+	// First step: find the path to the crate.
+	let crate_json = reg.get_crate_json(&name).unwrap();
+	let version = if let Some(v) = version {
+		SvVersion::parse(v).unwrap()
+	} else {
+		// Finds the latest version
+		// TODO handle the case that there is no version
+		// -- then the crate is not present!!!
+		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
+	};
+
+	let dtls = get_crate_details(&name, version.clone(), st);
+	let (details, err_msg) = match dtls {
+		Ok(d) => (Some(d), None),
+		Err(msg) => (None, Some(msg)),
+	};
+
+	let versions = crate_json.iter()
+		.map(|v| v.version.clone())
+		.collect::<Vec<_>>();
+	let (v_start, v_limited) = if versions.len() > 5 {
+		(versions.len() - 5, true)
+	} else {
+		(0, false)
+	};
+	let json_for_version = crate_json.iter()
+		.filter(|v| v.version == version).next().unwrap();
+
+	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Dev)
+			.map(|d| d.to_crate_dep())
+			.collect();
+
+	let krate = Crate {
+		name : name.clone(),
+		version : version.to_string(),
+		details,
+		err_msg,
+		documentation : format!("https://docs.rs/{}/{}", name.clone(), version.to_string()),
+		versions : versions[v_start ..].iter().map(|v|
+			Version {
+				v : format!("{}", v),
+				date : None,
+			}
+		).collect(),
+		versions_limited : if v_limited {
+			Some(versions.len())
+		} else {
+			None
+		},
+		dependencies : json_for_version.dependencies.iter()
+			.filter(|d| d.kind == DependencyKind::Normal)
+			.map(|d| d.to_crate_dep())
+			.collect(),
+		dev_dependencies : if dev_deps.len() > 0 {
+			Some(dev_deps)
+		} else {
+			None
+		},
+	};
+	data.insert("c".to_string(), to_json(&krate));
+	data
+}
+
+#[derive(Serialize, Debug)]
+struct CrateDetails {
+	homepage :Option<String>,
+	repository :Option<String>,
+	description :String,
+	readme_html :Option<String>,
+	vcs_commit :Option<String>,
+	authors :Vec<Author>,
+	license :String,
+}
+
+fn get_crate_details<C :CrateSource>(name :&str, version :SvVersion,
+		st :&mut C) -> Result<CrateDetails, String> {
 	#[derive(Deserialize)]
 	struct CratePackage {
 		repository :Option<String>,
@@ -134,18 +212,6 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		package :CratePackage,
 	}
 
-	let mut data = Map::new();
-
-	// First step: find the path to the crate.
-	let crate_json = reg.get_crate_json(&name).unwrap();
-	let version = if let Some(v) = version {
-		SvVersion::parse(v).unwrap()
-	} else {
-		// Finds the latest version
-		// TODO handle the case that there is no version
-		// -- then the crate is not present!!!
-		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
-	};
 	let mut fh = match st.get_crate_handle_nv(name.to_owned(), version.clone()) {
 		Some(f) => f,
 		None => return Err(
@@ -197,27 +263,9 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 	} else {
 		None
 	};
-	let versions = crate_json.iter()
-		.map(|v| v.version.clone())
-		.collect::<Vec<_>>();
-	let (v_start, v_limited) = if versions.len() > 5 {
-		(versions.len() - 5, true)
-	} else {
-		(0, false)
-	};
-	let json_for_version = crate_json.iter()
-		.filter(|v| v.version == version).next().unwrap();
 
-	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
-			.filter(|d| d.kind == DependencyKind::Dev)
-			.map(|d| d.to_crate_dep())
-			.collect();
-
-	let krate = Crate {
-		name : name.clone(),
-		version : version.to_string(),
+	let r = CrateDetails {
 		homepage : info.package.homepage,
-		documentation : format!("https://docs.rs/{}/{}", name.clone(), version.to_string()),
 		repository : info.package.repository,
 		description : info.package.description,
 		readme_html : readme_html,
@@ -225,102 +273,9 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		authors : info.package.authors.iter()
 			.map(|s| Author::from_str(&s)).collect(),
 		license : info.package.license,
-		versions : versions[v_start ..].iter().map(|v|
-			Version {
-				v : format!("{}", v),
-				date : None,
-			}
-		).collect(),
-		versions_limited : if v_limited {
-			Some(versions.len())
-		} else {
-			None
-		},
-		dependencies : json_for_version.dependencies.iter()
-			.filter(|d| d.kind == DependencyKind::Normal)
-			.map(|d| d.to_crate_dep())
-			.collect(),
-		dev_dependencies : if dev_deps.len() > 0 {
-			Some(dev_deps)
-		} else {
-			None
-		},
-	};
-	data.insert("c".to_string(), to_json(&krate));
-	Ok(data)
-}
-
-pub fn get_crate_error_data(name :String, reg :&Registry,
-		version :Option<&str>, err_msg :String) -> Map<String, Value> {
-
-	#[derive(Serialize, Debug)]
-	struct Crate {
-		name :String,
-		version :String,
-		documentation :String,
-		err_msg :String,
-		versions :Vec<Version>,
-		versions_limited :Option<usize>,
-		dependencies :Vec<Dependency>,
-		dev_dependencies :Option<Vec<Dependency>>,
-	}
-
-	let mut data = Map::new();
-
-	let crate_json = reg.get_crate_json(&name).unwrap();
-	let version = if let Some(v) = version {
-		SvVersion::parse(v).unwrap()
-	} else {
-		// Finds the latest version
-		// TODO handle the case that there is no version
-		// -- then the crate is not present!!!
-		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
 	};
 
-	let versions = crate_json.iter()
-		.map(|v| v.version.clone())
-		.collect::<Vec<_>>();
-	let (v_start, v_limited) = if versions.len() > 5 {
-		(versions.len() - 5, true)
-	} else {
-		(0, false)
-	};
-	let json_for_version = crate_json.iter()
-		.filter(|v| v.version == version).next().unwrap();
-
-	let dev_deps :Vec<Dependency> = json_for_version.dependencies.iter()
-			.filter(|d| d.kind == DependencyKind::Dev)
-			.map(|d| d.to_crate_dep())
-			.collect();
-
-	let krate = Crate {
-		name : name.clone(),
-		version : version.to_string(),
-		documentation : format!("https://docs.rs/{}/{}", name.clone(), version.to_string()),
-		err_msg,
-		versions : versions[v_start ..].iter().map(|v|
-			Version {
-				v : format!("{}", v),
-				date : None,
-			}
-		).collect(),
-		versions_limited : if v_limited {
-			Some(versions.len())
-		} else {
-			None
-		},
-		dependencies : json_for_version.dependencies.iter()
-			.filter(|d| d.kind == DependencyKind::Normal)
-			.map(|d| d.to_crate_dep())
-			.collect(),
-		dev_dependencies : if dev_deps.len() > 0 {
-			Some(dev_deps)
-		} else {
-			None
-		},
-	};
-	data.insert("c".to_string(), to_json(&krate));
-	data
+	Ok(r)
 }
 
 pub fn get_versions_data(name :&str, reg :&Registry, refferer :Option<String>)
