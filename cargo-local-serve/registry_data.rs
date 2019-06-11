@@ -9,6 +9,7 @@ use all_crate_storage::registry::registry::{Dependency, Registry, DependencyKind
 use all_crate_storage::registry::statistics::CrateStats;
 use all_crate_storage::crate_storage::CrateSource;
 use super::markdown_render::render_markdown;
+use crate::StrErr;
 
 #[derive(Serialize, Debug)]
 pub struct Crate {
@@ -116,19 +117,22 @@ pub fn winapi_crate_data() -> Map<String, Value> {
 }
 
 pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
-		version :Option<&str>) -> Map<String, Value> {
+		version :Option<&str>) -> Result<Map<String, Value>, StrErr> {
 
 	let mut data = Map::new();
 
 	// First step: find the path to the crate.
-	let crate_json = reg.get_crate_json(&name).unwrap();
+	let crate_json = reg.get_crate_json(&name)
+		.map_err(|_| format!("Couldn't get crate json for crate '{}'", name))?;
 	let version = if let Some(v) = version {
 		SvVersion::parse(v).unwrap()
 	} else {
 		// Finds the latest version
-		// TODO handle the case that there is no version
-		// -- then the crate is not present!!!
-		crate_json.iter().map(|v| &v.version).max().unwrap().clone()
+		crate_json.iter()
+			.map(|v| &v.version)
+			.max()
+			.ok_or_else(|| format!("No version present of crate '{}'", name))?
+			.clone()
 	};
 
 	let dtls = get_crate_details(&name, version.clone(), st);
@@ -181,7 +185,7 @@ pub fn get_crate_data<C :CrateSource>(name :String, reg :&Registry, st :&mut C,
 		},
 	};
 	data.insert("c".to_string(), to_json(&krate));
-	data
+	Ok(data)
 }
 
 #[derive(Serialize, Debug)]

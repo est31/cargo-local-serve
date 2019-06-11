@@ -26,6 +26,7 @@ use iron::prelude::*;
 use iron::{AfterMiddleware, Handler, status};
 use iron::headers::{ContentEncoding, Encoding, Location};
 use hbs::{Template, HandlebarsEngine, DirectorySource};
+use hbs::handlebars::to_json;
 use serde_json::value::{Value, Map};
 
 use iron::headers::Referer;
@@ -36,6 +37,7 @@ use std::fs::File;
 use std::io::Read;
 use std::cell::RefCell;
 use std::sync::RwLock;
+use std::fmt::Display;
 
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -59,6 +61,23 @@ mod markdown_render;
 mod escape;
 mod code_format;
 mod syntect_format;
+
+#[derive(Debug)]
+pub struct StrErr(String);
+
+impl<T :Display> From<T> for StrErr {
+	fn from(v :T) -> Self {
+		StrErr(format!("{}", v))
+	}
+}
+
+impl StrErr {
+	fn as_map(&self) -> Map<String, Value> {
+		let mut m = Map::new();
+		m.insert("error".to_string(), to_json(&self.0));
+		m
+	}
+}
 
 pub struct GzMiddleware;
 
@@ -161,9 +180,16 @@ fn krate(r: &mut Request) -> IronResult<Response> {
 	CRATE_SOURCE.with(|s| {
 		let data = registry_data::get_crate_data(name.to_string(),
 			&REGISTRY, &mut *s.borrow_mut(), opt_version);
-
-		resp.set_mut(Template::new("crate", data))
-			.set_mut(status::Ok);
+		match data {
+			Ok(d) => {
+				resp.set_mut(Template::new("crate", d))
+					.set_mut(status::Ok);
+			},
+			Err(e) => {
+				resp.set_mut(Template::new("error", e.as_map()))
+					.set_mut(status::Ok);
+			},
+		}
 	});
 	Ok(resp)
 }
@@ -261,6 +287,9 @@ fn api_crate(req :&mut Request) -> IronResult<Response> {
 		let s = &mut *s.borrow_mut();
 		let crate_opt = s.get_crate(&crate_spec);
 		if let Some(crate_data) = crate_opt {
+			use all_crate_storage::reconstruction::CrateContentBlobs;
+			let ccb = CrateContentBlobs::from_archive_file(&crate_data as &[u8]).unwrap();
+			let crate_data = ccb.to_archive_file();
 			resp.set_mut(crate_data)
 				.set_mut(status::Ok);
 		} else {
