@@ -45,7 +45,7 @@ serde_derive = "1.0.0"
 flate2 = "=1.0.1"
 tar = "0.4"
 semver = { version = "0.9", features = ["serde"] }
-git2 = "0.8"
+git2 = "0.9"
 failure = "0.1.0"
 failure_derive = "0.1.0"
 ring = "0.14"
