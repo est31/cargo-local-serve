@@ -40,8 +40,10 @@
 					<p>{{c.de.description}}</p>
 				{{/if}}
 				{{#if c.err_msg}}
-					<h3>Error</h3>
-					<p>{{c.err_msg}}</p>
+					<div class="error-display">
+						<h3>Error</h3>
+						<p>{{c.err_msg}}</p>
+					</div>
 				{{/if}}
 			{{/if}}
 		</div>

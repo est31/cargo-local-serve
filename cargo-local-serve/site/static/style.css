@@ -211,11 +211,11 @@ span.small {
 
 .error-display {
 	font-weight: 700;
-	font-size: 110%;
+	font-size: 120%;
 	background-color: #ffd5d5;
 	border: 2px solid #e48888;
 	text-align: center;
-	margin: 0 0 10px;
+	margin: 10px 0 10px;
 	padding: 10px;
 	border-radius: 5px;
 }
