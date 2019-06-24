@@ -104,7 +104,7 @@ impl AfterMiddleware for GzMiddleware {
 	}
 }
 
-struct FallbackHandler(Box<Handler>);
+struct FallbackHandler(Box<dyn Handler>);
 
 impl Handler for FallbackHandler {
 	fn handle(&self, req: &mut Request) -> IronResult<Response> {
@@ -132,7 +132,7 @@ lazy_static! {
 		Registry::from_name("github.com-1ecc6299db9ec823").unwrap();
 	static ref CRATE_STATS :CrateStats =
 		compute_crate_statistics(&REGISTRY.get_all_crates_json().unwrap());
-	static ref CRATE_SOURCE_GEN :RwLock<Option<Box<Fn() -> DynCrateSource<File> + Send + Sync>>> = RwLock::new(None);
+	static ref CRATE_SOURCE_GEN :RwLock<Option<Box<dyn Fn() -> DynCrateSource<File> + Send + Sync>>> = RwLock::new(None);
 }
 
 thread_local!(static CRATE_SOURCE :RefCell<DynCrateSource<File>> = {
@@ -386,7 +386,7 @@ fn main() {
 		let b = match cfg.source {
 			CrateSourceCfg::Cache => Box::new(|| {
 				DynCrateSource::CacheStorage(REGISTRY.get_cache_storage())
-			}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>,
+			}) as Box<dyn Fn() -> DynCrateSource<File> + Send + Sync>,
 			CrateSourceCfg::ArchiveTree { path } => {
 				let p = if let Some(p) = path {
 					p
@@ -395,7 +395,7 @@ fn main() {
 				};
 				Box::new(move || {
 					DynCrateSource::FileTreeStorage(FileTreeStorage::new(Path::new(&p)))
-				}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>
+				}) as Box<dyn Fn() -> DynCrateSource<File> + Send + Sync>
 			},
 			CrateSourceCfg::StorageFile { path } => {
 				let p = if let Some(p) = path {
@@ -408,7 +408,7 @@ fn main() {
 					let bcs = BlobCrateStorage::new(f).unwrap();
 					let dcs :DynCrateSource<File> =  DynCrateSource::BlobCrateStorage(bcs);
 					dcs
-				}) as Box<Fn() -> DynCrateSource<File> + Send + Sync>
+				}) as Box<dyn Fn() -> DynCrateSource<File> + Send + Sync>
 			},
 		};
 		*csg = Some(b);

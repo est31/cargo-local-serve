@@ -42,7 +42,7 @@ pub trait CrateFileHandle<S :CrateSource> {
 	fn get_file(&self, source :&mut S, path :&str) -> Option<Vec<u8>>;
 }
 
-impl<S :CrateSource> CrateFileHandle<S> for Box<CrateFileHandle<S>> {
+impl<S :CrateSource> CrateFileHandle<S> for Box<dyn CrateFileHandle<S>> {
 	fn get_file_list(&self, source :&mut S) -> Vec<String> {
 		<Box<_> as Deref>::deref(self).get_file_list(source)
 	}
