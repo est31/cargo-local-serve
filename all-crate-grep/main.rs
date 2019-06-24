@@ -37,7 +37,7 @@ fn run(tx :SyncSender<(usize, usize, String)>, acj :&AllCratesJson,
 				continue;
 			}
 
-			let mut fh = match crate_source.get_crate_handle_nv(name.to_owned(), v.version.clone()) {
+			let fh = match crate_source.get_crate_handle_nv(name.to_owned(), v.version.clone()) {
 				Some(f) => f,
 				None => {
 					pln!("Version {} of crate {} not mirrored", v.version, name);

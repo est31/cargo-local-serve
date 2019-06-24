@@ -136,7 +136,7 @@ fn run(tx :SyncSender<Message>, acj :&AllCratesJson,
 				let mut sl :&[u8] = &buffer;
 				io::copy(&mut sl, &mut ring_ctx).unwrap();
 				let hash_str = ring_ctx.finish_and_get_digest_hex();
-				let mut sl :&[u8] = &buffer;
+				let sl :&[u8] = &buffer;
 				let mut gz_enc = GzBuilder::new().read(sl, Compression::best());
 				let mut buffer_compressed = Vec::<u8>::new();
 				io::copy(&mut gz_enc, &mut buffer_compressed).unwrap();

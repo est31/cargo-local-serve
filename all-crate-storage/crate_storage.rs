@@ -349,7 +349,7 @@ impl<S :CrateSource> CrateFileHandle<S> for BlobCrateHandle {
 		let decoded = GzDecoder::new(f);
 		let mut archive = Archive::new(decoded);
 		for entry in archive.entries().unwrap() {
-			let mut entry = entry.unwrap();
+			let entry = entry.unwrap();
 			let path = entry.path().unwrap();
 			let s :String = path.to_str().unwrap().to_owned();
 			l.push(s);

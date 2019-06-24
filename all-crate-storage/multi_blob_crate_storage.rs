@@ -68,7 +68,7 @@ impl GraphOfBlobs {
 						}
 						let path_stripped = strip_path(path, &krate.name, &krate.version)
 							.to_owned();
-						let mut digests = path_to_digests.entry(path_stripped)
+						let digests = path_to_digests.entry(path_stripped)
 							.or_insert(HashSet::new());
 						digests.insert(*digest);
 						digest_to_version.insert(*digest, krate.version.clone());
