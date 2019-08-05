@@ -48,7 +48,7 @@ semver = { version = "0.9", features = ["serde"] }
 git2 = "0.9"
 failure = "0.1.0"
 failure_derive = "0.1.0"
-ring = "0.14"
+ring = "0.16"
 byteorder = "1.0.0"
 multiqueue = "0.3"
 hex = "0.3.1"
