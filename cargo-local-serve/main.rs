@@ -19,6 +19,8 @@ extern crate syntect;
 #[macro_use]
 extern crate lazy_static;
 extern crate failure;
+#[macro_use]
+extern crate try;
 
 extern crate all_crate_storage;
 

@@ -33,6 +33,8 @@ path = "bin/diff.rs"
 
 [dependencies]
 
+try = "1.0.0"
+
 # Needed by the binaries
 pbr = "1.0.0"
 reqwest = "0.9"

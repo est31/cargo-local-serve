@@ -12,6 +12,8 @@ path = "main.rs"
 
 all-crate-storage = { path = "../all-crate-storage" }
 
+try = "1.0.0"
+
 #iron related
 handlebars-iron = "0.28"
 iron = "0.6.0"

@@ -16,6 +16,8 @@ extern crate multiqueue;
 extern crate hex;
 extern crate difference;
 extern crate petgraph;
+#[macro_use]
+extern crate try;
 
 pub mod registry;
 pub mod crate_storage;
