@@ -31,7 +31,7 @@ dependencies = [
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "multiqueue 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbr 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -795,7 +795,7 @@ dependencies = [
 
 [[package]]
 name = "hex"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -2821,7 +2821,7 @@ dependencies = [
 "checksum handlebars-iron 0.28.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4d021d1c98b3299dd0cb13bc8abaa627c277e196c921fb23d0377ae46a8f193a"
 "checksum hashbrown 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
-"checksum hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
+"checksum hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "023b39be39e3a2da62a94feb433e91e8bcd37676fbc8bea371daf52b7a769a3e"
 "checksum html5ever 0.24.1 (registry+https://github.com/rust-lang/crates.io-index)" = "025483b0a1e4577bb28578318c886ee5f817dda6eb62473269349044406644cb"
 "checksum http 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "372bcb56f939e449117fb0869c2e8fd8753a8223d92a172c6e808cf123a5b6e4"
 "checksum http-body 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6741c859c1b2463a423a1dbce98d418e6c3c3fc720fb0d45528657320920292d"
