@@ -3,6 +3,7 @@ name = "all-crate-storage"
 version = "0.1.0"
 license = "MIT/Apache-2.0"
 authors = ["est31 <MTest31@outlook.com>"]
+edition = "2015"
 
 [lib]
 path = "lib.rs"
