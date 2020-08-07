@@ -23,9 +23,9 @@ mount = "0.4"
 hyper = "0.10"
 
 # markdown rendering
-pulldown-cmark = { version = "0.6.0", default-features = false }
+pulldown-cmark = { version = "0.7.0", default-features = false }
 ammonia = "3.0.0"
-syntect = "3.0"
+syntect = "4.0"
 
 # all the other stuff
 toml = "0.5"

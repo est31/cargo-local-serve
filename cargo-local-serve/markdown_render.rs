@@ -1,4 +1,4 @@
-use pulldown_cmark::{html, Parser, Event, Tag};
+use pulldown_cmark::{html, Parser, Event, Tag, CodeBlockKind};
 use ammonia::Builder;
 use syntect_format::SyntectFormatter;
 
@@ -39,15 +39,17 @@ impl<'a> Iterator for EventIter<'a> {
 				}
 				next = self.p.next();
 			}
+			let mut fmt = SyntectFormatter::new();
 			match &next {
-				&Some(Event::End(Tag::CodeBlock(ref token))) => {
-
-					let fmt = SyntectFormatter::new().token(token);
-					let formatted = fmt.highlight_snippet(&text_buf);
-					return Some(Event::Html(formatted.into()));
+				Some(Event::End(Tag::CodeBlock(cb))) => {
+					if let CodeBlockKind::Fenced(ref token) = cb {
+						fmt = fmt.token(token);
+					}
 				},
 				_ => panic!("Unexpected element inside codeblock mode {:?}", next),
 			}
+			let formatted = fmt.highlight_snippet(&text_buf);
+			return Some(Event::Html(formatted.into()));
 		}
 		Some(next)
 	}
