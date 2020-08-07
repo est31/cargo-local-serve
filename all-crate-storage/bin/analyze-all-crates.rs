@@ -182,7 +182,7 @@ fn main() {
 	let mut file_count = 0;
 	let mut threads_running = thread_count;
 
-	let mut mb = MultiBar::new();
+	let mb = MultiBar::new();
 	mb.println("Analyzing all crates");
 	let mut p_list = (0..thread_count)
 		.map(|_| mb.create_bar((total_file_count/thread_count) as _))
